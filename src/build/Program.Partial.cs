@@ -6,7 +6,7 @@ using static SimpleExec.Command;
 
 namespace build
 {
-    partial class Program
+    public partial class Program
     {
         private const string packOutput = "./artifacts";
         private const string packOutputCopy = "../../nuget";
@@ -46,13 +46,7 @@ namespace build
                 Run("dotnet", $"test -c Release --no-build", echoPrefix: Prefix);
             });
 
-            Target(Targets.CleanPackOutput, () =>
-            {
-                if (Directory.Exists(packOutput))
-                {
-                    Directory.Delete(packOutput, true);
-                }
-            });
+            Target(Targets.CleanPackOutput, () => CleanPackOutputForTest(packOutput));
 
             Target(Targets.Pack, DependsOn(Targets.Build, Targets.CleanPackOutput), () =>
             {
@@ -85,7 +79,13 @@ namespace build
             RunTargetsAndExit(args, ex => ex is SimpleExec.NonZeroExitCodeException || ex.Message.EndsWith(envVarMissing), Prefix);
         }
 
-        private static void Sign(string path, string searchTerm)
+        private static void Sign(string path, string searchTerm) 
+        {
+            SignForTest(path, searchTerm);
+        }
+
+        // Exposed for testing
+        internal static void SignForTest(string path, string searchTerm)
         {
             var signClientSecret = Environment.GetEnvironmentVariable("SignClientSecret");
 
@@ -98,6 +98,14 @@ namespace build
             {
                 Console.WriteLine($"  Signing {file}");
                 Run("dotnet", $"SignClient sign -c ../../signClient.json -i {file} -r sc-ids@dotnetfoundation.org -s \"{signClientSecret}\" -n 'IdentityServer4'", noEcho: true);
+            }
+        }
+        // Exposed for testing
+        internal static void CleanPackOutputForTest(string directory)
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, true);
             }
         }
     }

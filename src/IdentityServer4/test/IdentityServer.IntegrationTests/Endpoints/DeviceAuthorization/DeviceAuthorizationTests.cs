@@ -129,6 +129,80 @@ namespace IdentityServer.IntegrationTests.Endpoints.DeviceAuthorization
             resultDto.interval.Should().BeGreaterThan(0);
         }
 
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task invalid_client_secret_should_return_InvalidClient()
+        {
+            var form = new Dictionary<string, string>
+            {
+                {"client_id", "client1"},
+                {"client_secret", "invalid_secret" }
+            };
+            var response = await _mockPipeline.BackChannelClient.PostAsync(IdentityServerPipeline.DeviceAuthorization, new FormUrlEncodedContent(form));
+
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            var resultDto = ParseJsonBody<ErrorResultDto>(await response.Content.ReadAsStreamAsync());
+
+            resultDto.Should().NotBeNull();
+            resultDto.error.Should().Be(OidcConstants.TokenErrors.InvalidClient);
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task missing_client_secret_should_return_InvalidClient()
+        {
+            var form = new Dictionary<string, string>
+            {
+                {"client_id", "client1"}
+            };
+            var response = await _mockPipeline.BackChannelClient.PostAsync(IdentityServerPipeline.DeviceAuthorization, new FormUrlEncodedContent(form));
+
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            var resultDto = ParseJsonBody<ErrorResultDto>(await response.Content.ReadAsStreamAsync());
+
+            resultDto.Should().NotBeNull();
+            resultDto.error.Should().Be(OidcConstants.TokenErrors.InvalidClient);
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task scope_exceeding_allowed_should_return_InvalidScope()
+        {
+            var form = new Dictionary<string, string>
+            {
+                {"client_id", "client1"},
+                {"client_secret", "secret"},
+                {"scope", "openid profile"} // profile is not in allowed scopes
+            };
+            var response = await _mockPipeline.BackChannelClient.PostAsync(IdentityServerPipeline.DeviceAuthorization, new FormUrlEncodedContent(form));
+
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            var resultDto = ParseJsonBody<ErrorResultDto>(await response.Content.ReadAsStreamAsync());
+
+            resultDto.Should().NotBeNull();
+            resultDto.error.Should().Be(OidcConstants.TokenErrors.InvalidScope);
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task valid_scope_should_succeed()
+        {
+            var form = new Dictionary<string, string>
+            {
+                {"client_id", "client1"},
+                {"client_secret", "secret"},
+                {"scope", "openid"}
+            };
+            var response = await _mockPipeline.BackChannelClient.PostAsync(IdentityServerPipeline.DeviceAuthorization, new FormUrlEncodedContent(form));
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var resultDto = ParseJsonBody<ResultDto>(await response.Content.ReadAsStreamAsync());
+
+            resultDto.Should().NotBeNull();
+            resultDto.device_code.Should().NotBeNull();
+            resultDto.user_code.Should().NotBeNull();
+        }
+
         private T ParseJsonBody<T>(Stream streamBody)
         {
             streamBody.Position = 0;

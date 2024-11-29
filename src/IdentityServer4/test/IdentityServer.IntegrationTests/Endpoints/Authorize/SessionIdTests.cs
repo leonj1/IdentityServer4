@@ -93,5 +93,51 @@ namespace IdentityServer.IntegrationTests.Endpoints.Authorize
             var sid2 = _mockPipeline.GetSessionCookie().Value;
             sid2.Should().Be(sid1);
         }
+
+        [Fact]
+        public async Task session_id_should_be_unique_for_different_users()
+        {
+            await _mockPipeline.LoginAsync("bob");
+            var sid1 = _mockPipeline.GetSessionCookie().Value;
+            
+            _mockPipeline.RemoveSessionCookie();
+            await _mockPipeline.LoginAsync("alice");
+            var sid2 = _mockPipeline.GetSessionCookie().Value;
+
+            sid1.Should().NotBeNull();
+            sid2.Should().NotBeNull();
+            sid2.Should().NotBe(sid1);
+        }
+
+        [Fact] 
+        public async Task session_id_should_persist_across_requests()
+        {
+            await _mockPipeline.LoginAsync("bob");
+            var sid1 = _mockPipeline.GetSessionCookie().Value;
+
+            await _mockPipeline.BrowserClient.GetAsync(IdentityServerPipeline.DiscoveryEndpoint);
+            var sid2 = _mockPipeline.GetSessionCookie().Value;
+
+            await _mockPipeline.BrowserClient.GetAsync(IdentityServerPipeline.DiscoveryEndpoint);
+            var sid3 = _mockPipeline.GetSessionCookie().Value;
+
+            sid1.Should().NotBeNull();
+            sid2.Should().Be(sid1);
+            sid3.Should().Be(sid1);
+        }
+
+        [Fact]
+        public async Task session_id_should_change_after_logout()
+        {
+            await _mockPipeline.LoginAsync("bob");
+            var sid1 = _mockPipeline.GetSessionCookie().Value;
+
+            await _mockPipeline.LogoutAsync();
+            var sid2 = _mockPipeline.GetSessionCookie().Value;
+
+            sid1.Should().NotBeNull();
+            sid2.Should().NotBeNull();
+            sid2.Should().NotBe(sid1);
+        }
     }
 }

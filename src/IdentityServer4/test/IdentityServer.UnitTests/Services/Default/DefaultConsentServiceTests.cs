@@ -207,5 +207,69 @@ namespace IdentityServer.UnitTests.Services.Default
 
             result.Should().BeNull();
         }
+
+        [Fact]
+        public async Task RequiresConsentAsync_should_handle_parameterized_scopes()
+        {
+            var scopes = new[] { 
+                new ParsedScopeValue("scope1:param1"), 
+                new ParsedScopeValue("scope2:param2") 
+            };
+            
+            await _subject.UpdateConsentAsync(_user, _client, scopes);
+
+            var result = await _subject.RequiresConsentAsync(_user, _client, scopes);
+            result.Should().BeFalse();
+
+            // Different parameters should require consent
+            var differentScopes = new[] { 
+                new ParsedScopeValue("scope1:different"), 
+                new ParsedScopeValue("scope2:param2") 
+            };
+            result = await _subject.RequiresConsentAsync(_user, _client, differentScopes);
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task UpdateConsentAsync_should_handle_multiple_clients()
+        {
+            var client2 = new Client
+            {
+                ClientId = "client2",
+                RequireConsent = true,
+                AllowRememberConsent = true
+            };
+
+            var scopes1 = new[] { new ParsedScopeValue("scope1"), new ParsedScopeValue("scope2") };
+            var scopes2 = new[] { new ParsedScopeValue("scope3"), new ParsedScopeValue("scope4") };
+
+            await _subject.UpdateConsentAsync(_user, _client, scopes1);
+            await _subject.UpdateConsentAsync(_user, client2, scopes2);
+
+            var consent1 = await _userConsentStore.GetUserConsentAsync(_user.GetSubjectId(), _client.ClientId);
+            consent1.Scopes.Should().Contain(new[] { "scope1", "scope2" });
+
+            var consent2 = await _userConsentStore.GetUserConsentAsync(_user.GetSubjectId(), client2.ClientId);
+            consent2.Scopes.Should().Contain(new[] { "scope3", "scope4" });
+        }
+
+        [Fact]
+        public async Task UpdateConsentAsync_should_handle_invalid_consent_data()
+        {
+            // Null scopes
+            await _subject.UpdateConsentAsync(_user, _client, null);
+            var consent = await _userConsentStore.GetUserConsentAsync(_user.GetSubjectId(), _client.ClientId);
+            consent.Should().BeNull();
+
+            // Null user
+            await _subject.UpdateConsentAsync(null, _client, new[] { new ParsedScopeValue("scope1") });
+            consent = await _userConsentStore.GetUserConsentAsync(_user.GetSubjectId(), _client.ClientId);
+            consent.Should().BeNull();
+
+            // Null client
+            await _subject.UpdateConsentAsync(_user, null, new[] { new ParsedScopeValue("scope1") });
+            consent = await _userConsentStore.GetUserConsentAsync(_user.GetSubjectId(), _client.ClientId);
+            consent.Should().BeNull();
+        }
     }
 }

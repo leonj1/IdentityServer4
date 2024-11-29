@@ -220,5 +220,164 @@ namespace IdentityServer.UnitTests.ResponseHandling
                 .And.Message.Should().Contain("subject");
         }
 
+        [Fact]
+        public async Task ProcessAsync_when_profile_service_returns_null_claims_should_only_return_sub()
+        {
+            _identityResources.Add(new IdentityResource("id1", new[] { "foo" }));
+            _mockProfileService.ProfileClaims = null;
+
+            var result = new UserInfoRequestValidationResult
+            {
+                Subject = _user,
+                TokenValidationResult = new TokenValidationResult
+                {
+                    Claims = new List<Claim>
+                    {
+                        { new Claim("scope", "id1") }
+                    },
+                    Client = _client
+                }
+            };
+
+            var claims = await _subject.ProcessAsync(result);
+
+            claims.Should().ContainKey("sub");
+            claims["sub"].Should().Be("bob");
+            claims.Count.Should().Be(1);
+        }
+
+        [Fact]
+        public async Task ProcessAsync_when_profile_service_returns_empty_claims_should_only_return_sub()
+        {
+            _identityResources.Add(new IdentityResource("id1", new[] { "foo" }));
+            _mockProfileService.ProfileClaims = new Claim[] { };
+
+            var result = new UserInfoRequestValidationResult
+            {
+                Subject = _user,
+                TokenValidationResult = new TokenValidationResult
+                {
+                    Claims = new List<Claim>
+                    {
+                        { new Claim("scope", "id1") }
+                    },
+                    Client = _client
+                }
+            };
+
+            var claims = await _subject.ProcessAsync(result);
+
+            claims.Should().ContainKey("sub");
+            claims["sub"].Should().Be("bob");
+            claims.Count.Should().Be(1);
+        }
+
+        [Fact]
+        public async Task ProcessAsync_should_handle_multiple_claims_of_same_type()
+        {
+            _identityResources.Add(new IdentityResource("id1", new[] { "foo" }));
+            _mockProfileService.ProfileClaims = new[]
+            {
+                new Claim("role", "admin"),
+                new Claim("role", "user"),
+                new Claim("name", "Bob Smith")
+            };
+
+            var result = new UserInfoRequestValidationResult
+            {
+                Subject = _user,
+                TokenValidationResult = new TokenValidationResult
+                {
+                    Claims = new List<Claim> { new Claim("scope", "id1") },
+                    Client = _client
+                }
+            };
+
+            var claims = await _subject.ProcessAsync(result);
+
+            claims.Should().ContainKey("role");
+            claims["role"].Should().BeOfType<JsonElement>();
+            var roles = JsonSerializer.Deserialize<string[]>(claims["role"].ToString());
+            roles.Should().BeEquivalentTo(new[] { "admin", "user" });
+            claims["name"].ToString().Should().Be("Bob Smith");
+        }
+
+        [Fact]
+        public async Task ProcessAsync_should_throw_when_validation_result_is_null()
+        {
+            Func<Task> act = () => _subject.ProcessAsync(null);
+
+            await act.Should().ThrowAsync<ArgumentNullException>()
+                .WithMessage("*validationResult*");
+        }
+
+        [Fact] 
+        public async Task ProcessAsync_should_throw_when_subject_is_null()
+        {
+            var result = new UserInfoRequestValidationResult
+            {
+                Subject = null,
+                TokenValidationResult = new TokenValidationResult()
+            };
+
+            Func<Task> act = () => _subject.ProcessAsync(result);
+
+            await act.Should().ThrowAsync<ArgumentNullException>()
+                .WithMessage("*subject*");
+        }
+
+        [Fact]
+        public async Task ProcessAsync_should_throw_when_token_validation_result_is_null()
+        {
+            var result = new UserInfoRequestValidationResult
+            {
+                Subject = _user,
+                TokenValidationResult = null
+            };
+
+            Func<Task> act = () => _subject.ProcessAsync(result);
+
+            await act.Should().ThrowAsync<ArgumentNullException>()
+                .WithMessage("*tokenValidationResult*");
+        }
+
+        [Fact]
+        public async Task GetRequestedResourcesAsync_should_return_empty_when_scopes_null()
+        {
+            var resources = await _subject.GetRequestedResourcesAsync(null);
+            resources.IdentityResources.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task GetRequestedResourcesAsync_should_filter_disabled_identity_resources()
+        {
+            _identityResources.Add(new IdentityResource("id1", new[] { "c1" }) { Enabled = false });
+            _identityResources.Add(new IdentityResource("id2", new[] { "c2" }) { Enabled = true });
+
+            var resources = await _subject.GetRequestedResourcesAsync(new[] { "id1", "id2" });
+            resources.IdentityResources.Should().HaveCount(1);
+            resources.IdentityResources.First().Name.Should().Be("id2");
+        }
+
+        [Fact]
+        public async Task ProcessAsync_should_handle_empty_claims_from_profile_service()
+        {
+            _identityResources.Add(new IdentityResource("id1", new[] { "foo" }));
+            _mockProfileService.ProfileClaims = Array.Empty<Claim>();
+
+            var result = new UserInfoRequestValidationResult
+            {
+                Subject = _user,
+                TokenValidationResult = new TokenValidationResult
+                {
+                    Claims = new List<Claim> { new Claim("scope", "id1") },
+                    Client = _client
+                }
+            };
+
+            var claims = await _subject.ProcessAsync(result);
+            claims.Should().ContainKey("sub");
+            claims.Count.Should().Be(1);
+        }
     }
 }

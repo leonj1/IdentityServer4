@@ -176,6 +176,65 @@ namespace IdentityServer.UnitTests.ResponseHandling
             response.VerificationUri.Should().Be("http://short/device");
             response.VerificationUriComplete.Should().StartWith("http://short/device?userCode=");
         }
+
+        [Fact]
+        public async Task ProcessAsync_when_description_provided_expect_stored_in_devicecode()
+        {
+            const string testDescription = "test device description";
+            testResult.ValidatedRequest.Description = testDescription;
+
+            var response = await generator.ProcessAsync(testResult, TestBaseUrl);
+
+            var deviceCode = await deviceFlowCodeService.FindByDeviceCodeAsync(response.DeviceCode);
+            deviceCode.Description.Should().Be(testDescription);
+        }
+
+        [Fact]
+        public async Task ProcessAsync_when_custom_interval_set_expect_correct_interval()
+        {
+            const int customInterval = 10;
+            options.DeviceFlow.Interval = customInterval;
+
+            var response = await generator.ProcessAsync(testResult, TestBaseUrl);
+
+            response.Interval.Should().Be(customInterval);
+        }
+
+        [Fact]
+        public async Task ProcessAsync_when_empty_baseurl_expect_exception()
+        {
+            Func<Task> act = () => generator.ProcessAsync(testResult, "");
+            await act.Should().ThrowAsync<ArgumentException>();
+        }
+
+        [Fact] 
+        public async Task ProcessAsync_when_invalid_baseurl_expect_exception()
+        {
+            Func<Task> act = () => generator.ProcessAsync(testResult, "invalid-url");
+            await act.Should().ThrowAsync<ArgumentException>();
+        }
+
+        [Fact]
+        public async Task ProcessAsync_when_no_scopes_requested_expect_empty_scopes()
+        {
+            testResult.ValidatedRequest.RequestedScopes = new List<string>();
+            
+            var response = await generator.ProcessAsync(testResult, TestBaseUrl);
+            
+            var deviceCode = await deviceFlowCodeService.FindByDeviceCodeAsync(response.DeviceCode);
+            deviceCode.RequestedScopes.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task ProcessAsync_when_client_has_zero_lifetime_expect_default_lifetime()
+        {
+            testResult.ValidatedRequest.Client.DeviceCodeLifetime = 0;
+
+            var response = await generator.ProcessAsync(testResult, TestBaseUrl);
+
+            var deviceCode = await deviceFlowCodeService.FindByDeviceCodeAsync(response.DeviceCode);
+            deviceCode.Lifetime.Should().Be(300); // Default lifetime
+        }
     }
 
     internal class FakeUserCodeGenerator : IUserCodeGenerator

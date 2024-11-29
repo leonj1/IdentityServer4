@@ -52,5 +52,61 @@ namespace IdentityServer.IntegrationTests.Clients
             doc.KeySet.Keys.First().E.Should().NotBeNull();
             doc.KeySet.Keys.First().N.Should().NotBeNull();
         }
+
+        [Fact]
+        public async Task Discovery_document_should_have_expected_grant_types()
+        {
+            var doc = await _client.GetDiscoveryDocumentAsync(new DiscoveryDocumentRequest
+            {
+                Address = DiscoveryEndpoint,
+                Policy = { ValidateIssuerName = false }
+            });
+
+            doc.GrantTypesSupported.Should().Contain("authorization_code");
+            doc.GrantTypesSupported.Should().Contain("client_credentials");
+            doc.GrantTypesSupported.Should().Contain("password");
+            doc.GrantTypesSupported.Should().Contain("implicit");
+        }
+
+        [Fact]
+        public async Task Discovery_document_should_have_expected_scopes()
+        {
+            var doc = await _client.GetDiscoveryDocumentAsync(new DiscoveryDocumentRequest
+            {
+                Address = DiscoveryEndpoint,
+                Policy = { ValidateIssuerName = false }
+            });
+
+            doc.ScopesSupported.Should().Contain("openid");
+            doc.ScopesSupported.Should().Contain("profile");
+            doc.ScopesSupported.Should().Contain("email");
+        }
+
+        [Fact]
+        public async Task Invalid_discovery_endpoint_should_fail()
+        {
+            var response = await _client.GetDiscoveryDocumentAsync(new DiscoveryDocumentRequest
+            {
+                Address = "https://invalid-server/.well-known/openid-configuration",
+                Policy = { ValidateIssuerName = false }
+            });
+
+            response.IsError.Should().BeTrue();
+            response.Error.Should().NotBeNullOrEmpty();
+        }
+
+        [Fact]
+        public async Task Discovery_document_should_have_expected_response_types()
+        {
+            var doc = await _client.GetDiscoveryDocumentAsync(new DiscoveryDocumentRequest
+            {
+                Address = DiscoveryEndpoint,
+                Policy = { ValidateIssuerName = false }
+            });
+
+            doc.ResponseTypesSupported.Should().Contain("code");
+            doc.ResponseTypesSupported.Should().Contain("token");
+            doc.ResponseTypesSupported.Should().Contain("id_token");
+        }
     }
 }

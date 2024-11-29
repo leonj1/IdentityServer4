@@ -569,5 +569,78 @@ namespace IdentityServer.IntegrationTests.Endpoints.EndSession
 
             _mockPipeline.BackChannelMessageHandler.InvokeWasCalled.Should().BeTrue();
         }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task end_session_without_id_token_hint_should_not_validate_post_logout_redirect_uri()
+        {
+            await _mockPipeline.LoginAsync("bob");
+
+            var response = await _mockPipeline.BrowserClient.GetAsync(IdentityServerPipeline.EndSessionEndpoint + 
+                "?post_logout_redirect_uri=https://client1/signout-callback-invalid");
+
+            _mockPipeline.LogoutWasCalled.Should().BeTrue();
+            _mockPipeline.LogoutRequest.PostLogoutRedirectUri.Should().BeNull();
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task end_session_with_invalid_id_token_hint_should_not_validate_post_logout_redirect_uri()
+        {
+            await _mockPipeline.LoginAsync("bob");
+
+            var response = await _mockPipeline.BrowserClient.GetAsync(IdentityServerPipeline.EndSessionEndpoint +
+                "?id_token_hint=invalid_token" +
+                "&post_logout_redirect_uri=https://client1/signout-callback");
+
+            _mockPipeline.LogoutWasCalled.Should().BeTrue();
+            _mockPipeline.LogoutRequest.PostLogoutRedirectUri.Should().BeNull();
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task end_session_with_multiple_front_channel_clients_should_render_all_iframes()
+        {
+            await _mockPipeline.LoginAsync("bob");
+            var sid = _mockPipeline.GetSessionCookie().Value;
+
+            // Login to multiple clients
+            _mockPipeline.BrowserClient.AllowAutoRedirect = false;
+            var response1 = await _mockPipeline.RequestAuthorizationEndpointAsync(
+                clientId: "client1",
+                responseType: "id_token",
+                scope: "openid",
+                redirectUri: "https://client1/callback",
+                state: "123_state",
+                nonce: "123_nonce");
+
+            var response2 = await _mockPipeline.RequestAuthorizationEndpointAsync(
+                clientId: "client2",
+                responseType: "id_token", 
+                scope: "openid",
+                redirectUri: "https://client2/callback",
+                state: "123_state",
+                nonce: "123_nonce");
+
+            var response3 = await _mockPipeline.RequestAuthorizationEndpointAsync(
+                clientId: "client4",
+                responseType: "id_token",
+                scope: "openid", 
+                redirectUri: "https://client4/callback",
+                state: "123_state",
+                nonce: "123_nonce");
+
+            _mockPipeline.BrowserClient.AllowAutoRedirect = true;
+            response1 = await _mockPipeline.BrowserClient.GetAsync(IdentityServerPipeline.EndSessionEndpoint);
+
+            var signoutFrameUrl = _mockPipeline.LogoutRequest.SignOutIFrameUrl;
+            response1 = await _mockPipeline.BrowserClient.GetAsync(signoutFrameUrl);
+            var html = await response1.Content.ReadAsStringAsync();
+
+            // Verify all client iframes are present
+            html.Should().Contain(HtmlEncoder.Default.Encode("https://client1/signout?sid=" + sid + "&iss=" + UrlEncoder.Default.Encode("https://server")));
+            html.Should().Contain(HtmlEncoder.Default.Encode("https://client2/signout?sid=" + sid + "&iss=" + UrlEncoder.Default.Encode("https://server")));
+            html.Should().Contain(HtmlEncoder.Default.Encode("https://client4/signout?sid=" + sid + "&iss=" + UrlEncoder.Default.Encode("https://server")));
+        }
     }
 }

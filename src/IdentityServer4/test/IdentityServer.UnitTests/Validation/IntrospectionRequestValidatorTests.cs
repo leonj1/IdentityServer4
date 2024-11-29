@@ -92,5 +92,165 @@ namespace IdentityServer.UnitTests.Validation
             result.Claims.Should().BeNull();
             result.Token.Should().Be("invalid");
         }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task valid_token_with_api_should_validate()
+        {
+            var token = new Token {
+                CreationTime = DateTime.UtcNow,
+                Issuer = "http://op",
+                ClientId = "codeclient",
+                Lifetime = 1000,
+                Claims =
+                {
+                    new System.Security.Claims.Claim("scope", "api1")
+                }
+            };
+            var handle = await _referenceTokenStore.StoreReferenceTokenAsync(token);
+            
+            var param = new NameValueCollection()
+            {
+                { "token", handle}
+            };
+
+            var api = new ApiResource("api1");
+            var result = await _subject.ValidateAsync(param, api);
+
+            result.IsError.Should().Be(false);
+            result.IsActive.Should().Be(true);
+            result.Api.Name.Should().Be("api1");
+            result.Token.Should().Be(handle);
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task expired_token_should_return_inactive()
+        {
+            var token = new Token {
+                CreationTime = DateTime.UtcNow.AddHours(-1),
+                Issuer = "http://op",
+                ClientId = "codeclient",
+                Lifetime = 1, // 1 second lifetime
+                Claims =
+                {
+                    new System.Security.Claims.Claim("scope", "api1")
+                }
+            };
+            var handle = await _referenceTokenStore.StoreReferenceTokenAsync(token);
+            
+            var param = new NameValueCollection()
+            {
+                { "token", handle}
+            };
+
+            var result = await _subject.ValidateAsync(param, null);
+
+            result.IsError.Should().Be(false);
+            result.IsActive.Should().Be(false);
+            result.Token.Should().Be(handle);
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task valid_token_should_return_expected_claims()
+        {
+            var token = new Token {
+                CreationTime = DateTime.UtcNow,
+                Issuer = "http://op",
+                ClientId = "codeclient",
+                Lifetime = 1000,
+                Claims =
+                {
+                    new System.Security.Claims.Claim("scope", "api1"),
+                    new System.Security.Claims.Claim("sub", "123"),
+                    new System.Security.Claims.Claim("client_id", "codeclient")
+                }
+            };
+            var handle = await _referenceTokenStore.StoreReferenceTokenAsync(token);
+            
+            var param = new NameValueCollection()
+            {
+                { "token", handle}
+            };
+
+            var result = await _subject.ValidateAsync(param, null);
+
+            result.IsError.Should().Be(false);
+            result.IsActive.Should().Be(true);
+            result.Claims.Should().Contain(c => c.Type == "scope" && c.Value == "api1");
+            result.Claims.Should().Contain(c => c.Type == "sub" && c.Value == "123");
+            result.Claims.Should().Contain(c => c.Type == "client_id" && c.Value == "codeclient");
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task token_with_no_claims_should_return_expected_result()
+        {
+            var token = new Token {
+                CreationTime = DateTime.UtcNow,
+                Issuer = "http://op",
+                ClientId = "codeclient",
+                Lifetime = 1000
+            };
+            var handle = await _referenceTokenStore.StoreReferenceTokenAsync(token);
+            
+            var param = new NameValueCollection()
+            {
+                { "token", handle}
+            };
+
+            var result = await _subject.ValidateAsync(param, null);
+
+            result.IsError.Should().Be(false);
+            result.IsActive.Should().Be(true);
+            result.Claims.Count().Should().Be(3); // Should have standard claims
+            result.Token.Should().Be(handle);
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task token_with_invalid_api_should_return_inactive()
+        {
+            var token = new Token {
+                CreationTime = DateTime.UtcNow,
+                Issuer = "http://op",
+                ClientId = "codeclient",
+                Lifetime = 1000,
+                Claims =
+                {
+                    new System.Security.Claims.Claim("scope", "api2")
+                }
+            };
+            var handle = await _referenceTokenStore.StoreReferenceTokenAsync(token);
+            
+            var param = new NameValueCollection()
+            {
+                { "token", handle}
+            };
+
+            var api = new ApiResource("api1");
+            var result = await _subject.ValidateAsync(param, api);
+
+            result.IsError.Should().Be(false);
+            result.IsActive.Should().Be(false);
+            result.Token.Should().Be(handle);
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task empty_token_should_return_error()
+        {
+            var param = new NameValueCollection()
+            {
+                { "token", string.Empty }
+            };
+
+            var result = await _subject.ValidateAsync(param, null);
+
+            result.IsError.Should().Be(true);
+            result.Error.Should().Be("missing_token");
+            result.IsActive.Should().Be(false);
+        }
     }
 }

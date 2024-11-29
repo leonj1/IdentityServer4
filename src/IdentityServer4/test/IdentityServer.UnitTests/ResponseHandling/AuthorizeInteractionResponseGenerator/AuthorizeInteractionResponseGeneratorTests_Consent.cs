@@ -413,5 +413,76 @@ namespace IdentityServer.UnitTests.ResponseHandling.AuthorizeInteractionResponse
             var result = await _subject.ProcessConsentAsync(request, consent);
             AssertUpdateConsentCalled(client, user);
         }
+
+        [Fact]
+        public async Task ProcessConsentAsync_ClientDoesNotAllowRememberConsent_DoesNotSaveConsent()
+        {
+            RequiresConsent(true);
+            var client = new Client { AllowRememberConsent = false };
+            var user = new ClaimsPrincipal();
+            var request = new ValidatedAuthorizeRequest()
+            {
+                ResponseMode = OidcConstants.ResponseModes.Fragment,
+                State = "12345",
+                RedirectUri = "https://client.com/callback",
+                Client = client,
+                Subject = user,
+                RequestedScopes = new List<string> { "openid", "read" },
+                ValidatedResources = GetValidatedResources("openid", "read"),
+            };
+            var consent = new ConsentResponse
+            {
+                RememberConsent = true, // Even if true, should not save due to client setting
+                ScopesValuesConsented = new string[] { "openid", "read" }
+            };
+            var result = await _subject.ProcessConsentAsync(request, consent);
+            AssertUpdateConsentNotCalled();
+        }
+
+        [Fact]
+        public async Task ProcessConsentAsync_NoValidatedResources_ReturnsErrorResult()
+        {
+            RequiresConsent(true);
+            var request = new ValidatedAuthorizeRequest()
+            {
+                ResponseMode = OidcConstants.ResponseModes.Fragment,
+                State = "12345",
+                RedirectUri = "https://client.com/callback",
+                Client = new Client(),
+                RequestedScopes = new List<string> { "openid", "read" },
+                ValidatedResources = null
+            };
+            var consent = new ConsentResponse
+            {
+                RememberConsent = true,
+                ScopesValuesConsented = new string[] { "openid", "read" }
+            };
+            var result = await _subject.ProcessConsentAsync(request, consent);
+            result.IsError.Should().BeTrue();
+            result.Error.Should().Be(OidcConstants.AuthorizeErrors.InvalidRequest);
+        }
+
+        [Fact]
+        public async Task ProcessConsentAsync_EmptyConsentedScopes_ReturnsErrorResult()
+        {
+            RequiresConsent(true);
+            var request = new ValidatedAuthorizeRequest()
+            {
+                ResponseMode = OidcConstants.ResponseModes.Fragment,
+                State = "12345",
+                RedirectUri = "https://client.com/callback",
+                Client = new Client(),
+                RequestedScopes = new List<string> { "openid", "read" },
+                ValidatedResources = GetValidatedResources("openid", "read")
+            };
+            var consent = new ConsentResponse
+            {
+                RememberConsent = true,
+                ScopesValuesConsented = new string[] { }
+            };
+            var result = await _subject.ProcessConsentAsync(request, consent);
+            result.IsError.Should().BeTrue();
+            result.Error.Should().Be(OidcConstants.AuthorizeErrors.AccessDenied);
+        }
     }
 }

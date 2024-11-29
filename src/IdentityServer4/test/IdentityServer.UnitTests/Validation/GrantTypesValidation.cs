@@ -139,5 +139,54 @@ namespace IdentityServer.UnitTests.Validation
 
             client.AllowedGrantTypes.Count.Should().Be(2);
         }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public void empty_string_grant_type_should_throw()
+        {
+            var client = new Client();
+
+            Action act = () => client.AllowedGrantTypes = new[] { string.Empty };
+
+            act.Should().Throw<InvalidOperationException>();
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public void whitespace_only_grant_type_should_throw()
+        {
+            var client = new Client();
+
+            Action act = () => client.AllowedGrantTypes = new[] { "   " };
+
+            act.Should().Throw<InvalidOperationException>();
+        }
+
+        [Theory]
+        [Trait("Category", Category)]
+        [InlineData(GrantType.ClientCredentials, GrantType.ResourceOwnerPassword)]
+        [InlineData(GrantType.DeviceFlow, GrantType.ResourceOwnerPassword)]
+        public void valid_grant_type_combinations_should_not_throw(string type1, string type2)
+        {
+            var client = new Client();
+
+            Action act = () => client.AllowedGrantTypes = new[] { type1, type2 };
+
+            act.Should().NotThrow();
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public void clearing_grant_types_should_succeed()
+        {
+            var client = new Client()
+            {
+                AllowedGrantTypes = { "implicit" }
+            };
+
+            client.AllowedGrantTypes.Clear();
+
+            client.AllowedGrantTypes.Should().BeEmpty();
+        }
     }
 }

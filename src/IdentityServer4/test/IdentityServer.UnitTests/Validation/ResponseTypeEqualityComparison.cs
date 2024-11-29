@@ -189,5 +189,64 @@ namespace IdentityServer.UnitTests.Validation
                 result.Should().BeFalse();
             }
         }
+
+        /// <summary>
+        /// Tests for edge cases and additional scenarios
+        /// </summary>
+        public class EdgeCaseComparisons
+        {
+            [Fact]
+            public void Empty_strings_should_be_equal()
+            {
+                ResponseTypeEqualityComparer comparer = new ResponseTypeEqualityComparer();
+                string x = "";
+                string y = "";
+                var result = comparer.Equals(x, y);
+                result.Should().BeTrue();
+            }
+
+            [Fact]
+            public void Extra_spaces_should_not_affect_equality()
+            {
+                ResponseTypeEqualityComparer comparer = new ResponseTypeEqualityComparer();
+                string x = "code   token    id_token";
+                string y = "token code id_token";
+                var result = comparer.Equals(x, y);
+                result.Should().BeTrue();
+            }
+
+            [Fact]
+            public void Duplicate_values_should_affect_equality()
+            {
+                ResponseTypeEqualityComparer comparer = new ResponseTypeEqualityComparer();
+                string x = "code token token";
+                string y = "code token";
+                var result = comparer.Equals(x, y);
+                result.Should().BeFalse();
+            }
+
+            [Fact]
+            public void Case_sensitivity_test()
+            {
+                ResponseTypeEqualityComparer comparer = new ResponseTypeEqualityComparer();
+                string x = "CODE token";
+                string y = "code TOKEN";
+                var result = comparer.Equals(x, y);
+                result.Should().BeFalse();
+            }
+
+            [Fact]
+            public void GetHashCode_should_be_consistent()
+            {
+                ResponseTypeEqualityComparer comparer = new ResponseTypeEqualityComparer();
+                string x = "code token id_token";
+                string y = "token code id_token";
+                
+                var hash1 = comparer.GetHashCode(x);
+                var hash2 = comparer.GetHashCode(y);
+                
+                hash1.Should().Be(hash2);
+            }
+        }
     }
 }

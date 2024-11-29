@@ -203,6 +203,26 @@ namespace IdentityServer.UnitTests.Services.Default
         }
 
         [Fact]
+        public void CreateSessionIdCookieOptions_should_use_check_session_cookie_domain_from_options()
+        {
+            _options.Authentication.CheckSessionCookieDomain = "foo.com";
+
+            var options = _subject.CreateSessionIdCookieOptions();
+            
+            options.Domain.Should().Be("foo.com");
+        }
+
+        [Fact]
+        public void CreateSessionIdCookieOptions_should_use_check_session_cookie_samesite_from_options()
+        {
+            _options.Authentication.CheckSessionCookieSameSiteMode = SameSiteMode.Strict;
+
+            var options = _subject.CreateSessionIdCookieOptions();
+            
+            options.SameSite.Should().Be(SameSiteMode.Strict);
+        }
+
+        [Fact]
         public async Task corrupt_properties_entry_should_clear_entry()
         {
             _mockAuthenticationHandler.Result = AuthenticateResult.Success(new AuthenticationTicket(_user, _props, "scheme"));
@@ -214,6 +234,43 @@ namespace IdentityServer.UnitTests.Services.Default
             var clients = await _subject.GetClientListAsync();
             clients.Should().BeEmpty();
             _props.Items.Count.Should().Be(0);
+        }
+
+        [Fact]
+        public async Task GetUserAsync_when_ticket_is_expired_should_return_null()
+        {
+            _props.ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(-5);
+            _mockAuthenticationHandler.Result = AuthenticateResult.Success(new AuthenticationTicket(_user, _props, "scheme"));
+
+            var user = await _subject.GetUserAsync();
+            user.Should().BeNull();
+        }
+
+        [Fact] 
+        public async Task AddClientIdAsync_with_null_clientId_should_throw()
+        {
+            _mockAuthenticationHandler.Result = AuthenticateResult.Success(new AuthenticationTicket(_user, _props, "scheme"));
+
+            await Assert.ThrowsAsync<ArgumentNullException>(() => _subject.AddClientIdAsync(null));
+        }
+
+        [Fact]
+        public async Task GetClientListAsync_when_no_authentication_should_return_empty_list()
+        {
+            _mockAuthenticationHandler.Result = AuthenticateResult.Fail("no auth");
+
+            var clients = await _subject.GetClientListAsync();
+            clients.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void CreateSessionIdCookieOptions_should_set_secure_flag_when_enabled()
+        {
+            _options.Authentication.RequireSsl = true;
+            
+            var options = _subject.CreateSessionIdCookieOptions();
+            
+            options.Secure.Should().BeTrue();
         }
 
         [Fact]

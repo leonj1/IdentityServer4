@@ -270,5 +270,70 @@ namespace IdentityServer.UnitTests.ResponseHandling.AuthorizeInteractionResponse
 
             request.Raw.AllKeys.Should().NotContain(OidcConstants.AuthorizeRequest.Prompt);
         }
+
+        [Fact]
+        public async Task Multiple_Prompt_Modes_Should_Sign_In()
+        {
+            var request = new ValidatedAuthorizeRequest
+            {
+                ClientId = "foo",
+                Subject = new IdentityServerUser("123").CreatePrincipal(),
+                PromptModes = new[] { OidcConstants.PromptModes.Login, OidcConstants.PromptModes.Consent },
+                Raw = new NameValueCollection()
+            };
+
+            var result = await _subject.ProcessLoginAsync(request);
+
+            result.IsLogin.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task Authenticated_User_With_Null_Client_Should_Throw()
+        {
+            var request = new ValidatedAuthorizeRequest
+            {
+                ClientId = "foo",
+                Subject = new IdentityServerUser("123").CreatePrincipal(),
+                Client = null
+            };
+
+            await Assert.ThrowsAsync<ArgumentNullException>(() => 
+                _subject.ProcessLoginAsync(request));
+        }
+
+        [Fact]
+        public async Task Null_Subject_Should_Throw()
+        {
+            var request = new ValidatedAuthorizeRequest
+            {
+                ClientId = "foo",
+                Subject = null,
+                Client = new Client()
+            };
+
+            await Assert.ThrowsAsync<ArgumentNullException>(() => 
+                _subject.ProcessLoginAsync(request));
+        }
+
+        [Fact]
+        public async Task Authenticated_User_With_Zero_UserSsoLifetime_Should_Not_SignIn()
+        {
+            var request = new ValidatedAuthorizeRequest
+            {
+                ClientId = "foo",
+                Client = new Client() {
+                    UserSsoLifetime = 0
+                },
+                Subject = new IdentityServerUser("123")
+                {
+                    IdentityProvider = "local",
+                    AuthenticationTime = _clock.UtcNow.UtcDateTime
+                }.CreatePrincipal()
+            };
+
+            var result = await _subject.ProcessLoginAsync(request);
+
+            result.IsLogin.Should().BeFalse();
+        }
     }
 }

@@ -313,6 +313,48 @@ namespace IdentityServer.UnitTests.Stores.Default
         }
 
         [Fact]
+        public async Task GetAuthorizationCode_WhenCodeDoesNotExist_ShouldReturnNull()
+        {
+            var result = await _codes.GetAuthorizationCodeAsync("nonexistent_code");
+            result.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task GetRefreshToken_WhenTokenDoesNotExist_ShouldReturnNull()
+        {
+            var result = await _refreshTokens.GetRefreshTokenAsync("nonexistent_token");
+            result.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task GetUserConsent_WhenConsentDoesNotExist_ShouldReturnNull()
+        {
+            var result = await _userConsent.GetUserConsentAsync("unknown_subject", "unknown_client");
+            result.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task StoreAuthorizationCode_WhenCodeIsNull_ShouldThrowArgumentNullException()
+        {
+            Func<Task> act = async () => await _codes.StoreAuthorizationCodeAsync(null);
+            await act.Should().ThrowAsync<ArgumentNullException>();
+        }
+
+        [Fact]
+        public async Task StoreRefreshToken_WhenTokenIsNull_ShouldThrowArgumentNullException()
+        {
+            Func<Task> act = async () => await _refreshTokens.StoreRefreshTokenAsync(null);
+            await act.Should().ThrowAsync<ArgumentNullException>();
+        }
+
+        [Fact]
+        public async Task StoreUserConsent_WhenConsentIsNull_ShouldThrowArgumentNullException()
+        {
+            Func<Task> act = async () => await _userConsent.StoreUserConsentAsync(null);
+            await act.Should().ThrowAsync<ArgumentNullException>();
+        }
+
+        [Fact]
         public async Task same_key_for_different_grant_types_should_not_interfere_with_each_other()
         {
             _stubHandleGenerationService.Handle = "key";

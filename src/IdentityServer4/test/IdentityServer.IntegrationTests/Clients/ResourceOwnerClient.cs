@@ -269,7 +269,7 @@ namespace IdentityServer.IntegrationTests.Clients
         }
 
 
-        private static Dictionary<string, object> GetPayload(IdentityModel.Client.TokenResponse response)
+        public static Dictionary<string, object> GetPayload(IdentityModel.Client.TokenResponse response)
         {
             var token = response.AccessToken.Split('.').Skip(1).Take(1).First();
             var dictionary = JsonConvert.DeserializeObject<Dictionary<string, object>>(

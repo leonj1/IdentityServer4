@@ -240,5 +240,74 @@ namespace IdentityServer.UnitTests.Validation
 
             result.IsError.Should().BeTrue();
         }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Valid_Reference_Token_Multiple_Scopes_Validation()
+        {
+            var store = Factory.CreateReferenceTokenStore();
+            var validator = Factory.CreateTokenValidator(store);
+
+            var token = TokenFactory.CreateAccessToken(new Client { ClientId = "roclient" }, "valid", 600, "read", "write", "delete");
+            var handle = await store.StoreReferenceTokenAsync(token);
+
+            // Test with multiple required scopes
+            var result = await validator.ValidateAccessTokenAsync(handle, "read write");
+            result.IsError.Should().BeFalse();
+
+            // Test with partial match
+            result = await validator.ValidateAccessTokenAsync(handle, "read delete");
+            result.IsError.Should().BeFalse();
+
+            // Test with non-matching scope
+            result = await validator.ValidateAccessTokenAsync(handle, "read admin");
+            result.IsError.Should().BeTrue();
+            result.Error.Should().Be(OidcConstants.ProtectedResourceErrors.InsufficientScope);
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Empty_Reference_Token()
+        {
+            var validator = Factory.CreateTokenValidator();
+
+            var result = await validator.ValidateAccessTokenAsync(string.Empty);
+
+            result.IsError.Should().BeTrue();
+            result.Error.Should().Be(OidcConstants.ProtectedResourceErrors.InvalidToken);
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Null_Reference_Token()
+        {
+            var validator = Factory.CreateTokenValidator();
+
+            var result = await validator.ValidateAccessTokenAsync(null);
+
+            result.IsError.Should().BeTrue();
+            result.Error.Should().Be(OidcConstants.ProtectedResourceErrors.InvalidToken);
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task JWT_Token_With_Invalid_Signature()
+        {
+            var signer = Factory.CreateDefaultTokenCreator();
+            var jwt = await signer.CreateTokenAsync(TokenFactory.CreateAccessToken(new Client { ClientId = "roclient" }, "valid", 600, "read", "write"));
+            
+            // Tamper with the signature
+            var parts = jwt.Split('.');
+            if (parts.Length == 3)
+            {
+                jwt = $"{parts[0]}.{parts[1]}.invalidSignature";
+            }
+
+            var validator = Factory.CreateTokenValidator(null);
+            var result = await validator.ValidateAccessTokenAsync(jwt);
+
+            result.IsError.Should().BeTrue();
+            result.Error.Should().Be(OidcConstants.ProtectedResourceErrors.InvalidToken);
+        }
     }
 }

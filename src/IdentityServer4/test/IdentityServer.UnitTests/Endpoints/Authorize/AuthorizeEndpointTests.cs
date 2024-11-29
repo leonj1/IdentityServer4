@@ -78,6 +78,31 @@ namespace IdentityServer.UnitTests.Endpoints.Authorize
             statusCode.StatusCode.Should().Be(415);
         }
 
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Invalid_method_should_return_method_not_allowed()
+        {
+            _context.Request.Method = "PUT";
+
+            var result = await _subject.ProcessAsync(_context);
+
+            var statusCode = result as StatusCodeResult;
+            statusCode.Should().NotBeNull();
+            statusCode.StatusCode.Should().Be(405);
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Post_request_with_form_content_should_return_valid_result()
+        {
+            _context.Request.Method = "POST";
+            _context.Request.ContentType = "application/x-www-form-urlencoded";
+            
+            var result = await _subject.ProcessAsync(_context);
+
+            result.Should().NotBeNull();
+        }
+
         internal void Init()
         {
             _context = new MockHttpContextAccessor().HttpContext;

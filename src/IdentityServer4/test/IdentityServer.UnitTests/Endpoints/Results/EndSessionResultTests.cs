@@ -99,5 +99,86 @@ namespace IdentityServer.UnitTests.Endpoints.Results
             location.Should().StartWith("https://server/logout");
             query.Count.Should().Be(0);
         }
+
+        [Fact]
+        public void constructor_should_throw_if_result_is_null()
+        {
+            Action act = () => new EndSessionResult(null);
+            act.Should().Throw<ArgumentNullException>().And.ParamName.Should().Be("result");
+        }
+
+        [Fact]
+        public async Task non_local_logout_url_should_not_be_modified()
+        {
+            _options.UserInteraction.LogoutUrl = "https://external-server/logout";
+            
+            await _subject.ExecuteAsync(_context);
+
+            var location = _context.Response.Headers["Location"].Single();
+            location.Should().Be("https://external-server/logout");
+        }
+
+        [Fact]
+        public async Task should_resolve_dependencies_from_di_if_not_provided()
+        {
+            var mockSystemClock = new StubClock();
+            var subject = new EndSessionResult(_result);
+            
+            _context.RequestServices = new ServiceCollection()
+                .AddSingleton(_options)
+                .AddSingleton<ISystemClock>(mockSystemClock)
+                .AddSingleton<IMessageStore<LogoutMessage>>(_mockLogoutMessageStore)
+                .BuildServiceProvider();
+
+            await subject.ExecuteAsync(_context);
+
+            var location = _context.Response.Headers["Location"].Single();
+            location.Should().StartWith("https://server/logout");
+        }
+
+        [Fact]
+        public async Task should_set_correct_response_type()
+        {
+            await _subject.ExecuteAsync(_context);
+            _context.Response.StatusCode.Should().Be(302);
+        }
+
+        [Fact] 
+        public async Task should_handle_null_validated_request()
+        {
+            _result.ValidatedRequest = null;
+            await _subject.ExecuteAsync(_context);
+
+            var location = _context.Response.Headers["Location"].Single();
+            location.Should().StartWith("https://server/logout");
+            _mockLogoutMessageStore.Messages.Count.Should().Be(0);
+        }
+
+        [Fact]
+        public async Task should_handle_null_post_logout_uri()
+        {
+            _result.ValidatedRequest = new ValidatedEndSessionRequest
+            {
+                Client = new Client { ClientId = "client" },
+                PostLogOutUri = null
+            };
+
+            await _subject.ExecuteAsync(_context);
+
+            var location = _context.Response.Headers["Location"].Single();
+            location.Should().StartWith("https://server/logout");
+            _mockLogoutMessageStore.Messages.Count.Should().Be(1);
+        }
+
+        [Fact]
+        public async Task should_preserve_query_parameters_in_logout_url()
+        {
+            _options.UserInteraction.LogoutUrl = "~/logout?param=value";
+            
+            await _subject.ExecuteAsync(_context);
+
+            var location = _context.Response.Headers["Location"].Single();
+            location.Should().StartWith("https://server/logout?param=value");
+        }
     }
 }

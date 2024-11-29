@@ -523,5 +523,58 @@ namespace IdentityServer.IntegrationTests.Endpoints.Revocation
             response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
             (await IsAccessTokenValidAsync(token)).Should().BeTrue();
         }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Empty_token_should_return_error()
+        {
+            var data = new Dictionary<string, string>
+            {
+                { "client_id", client_id },
+                { "client_secret", client_secret },
+                { "token", "" }
+            };
+
+            var response = await _mockPipeline.BackChannelClient.PostAsync(IdentityServerPipeline.RevocationEndpoint, new FormUrlEncodedContent(data));
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+            var result = await ProtocolResponse.FromHttpResponseAsync<TokenRevocationResponse>(response);
+            result.IsError.Should().BeTrue();
+            result.Error.Should().Be("invalid_request");
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Whitespace_token_should_return_error()
+        {
+            var data = new Dictionary<string, string>
+            {
+                { "client_id", client_id },
+                { "client_secret", client_secret },
+                { "token", "   " }
+            };
+
+            var response = await _mockPipeline.BackChannelClient.PostAsync(IdentityServerPipeline.RevocationEndpoint, new FormUrlEncodedContent(data));
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+            var result = await ProtocolResponse.FromHttpResponseAsync<TokenRevocationResponse>(response);
+            result.IsError.Should().BeTrue();
+            result.Error.Should().Be("invalid_request");
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Malformed_token_should_return_success()
+        {
+            var data = new Dictionary<string, string>
+            {
+                { "client_id", client_id },
+                { "client_secret", client_secret },
+                { "token", "not_a_valid_token" }
+            };
+
+            var response = await _mockPipeline.BackChannelClient.PostAsync(IdentityServerPipeline.RevocationEndpoint, new FormUrlEncodedContent(data));
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+        }
     }
 }

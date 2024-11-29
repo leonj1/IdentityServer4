@@ -160,5 +160,59 @@ namespace IdentityServer.UnitTests.Validation.Secrets
             var result = await _validator.ValidateAsync(client.ClientSecrets, secret);
             result.Success.Should().BeFalse();
         }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Client_with_Empty_Credential_Should_Fail()
+        {
+            var clientId = "single_secret_hashed_no_expiration";
+            var client = await _clients.FindEnabledClientByIdAsync(clientId);
+
+            var secret = new ParsedSecret
+            {
+                Id = clientId,
+                Type = IdentityServerConstants.ParsedSecretTypes.SharedSecret,
+                Credential = string.Empty
+            };
+
+            var result = await _validator.ValidateAsync(client.ClientSecrets, secret);
+            result.Success.Should().BeFalse();
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Expired_Secret_Should_Fail()
+        {
+            var clientId = "multiple_secrets_hashed";
+            var client = await _clients.FindEnabledClientByIdAsync(clientId);
+
+            var secret = new ParsedSecret
+            {
+                Id = clientId,
+                Type = IdentityServerConstants.ParsedSecretTypes.SharedSecret,
+                Credential = "expired"
+            };
+
+            var result = await _validator.ValidateAsync(client.ClientSecrets, secret);
+            result.Success.Should().BeFalse();
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Null_Credential_Should_Fail()
+        {
+            var clientId = "single_secret_hashed_no_expiration";
+            var client = await _clients.FindEnabledClientByIdAsync(clientId);
+
+            var secret = new ParsedSecret
+            {
+                Id = clientId,
+                Type = IdentityServerConstants.ParsedSecretTypes.SharedSecret,
+                Credential = null
+            };
+
+            var result = await _validator.ValidateAsync(client.ClientSecrets, secret);
+            result.Success.Should().BeFalse();
+        }
     }
 }

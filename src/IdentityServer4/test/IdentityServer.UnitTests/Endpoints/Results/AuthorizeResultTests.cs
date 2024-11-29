@@ -261,5 +261,103 @@ namespace IdentityServer.UnitTests.Endpoints.Results
             _context.Response.Headers["Content-Security-Policy"].First().Should().Contain("script-src 'sha256-orD0/VhH8hLqrLxKHD/HUEMdwqX6/0ve7c5hspX5VJ8='");
             _context.Response.Headers["X-Content-Security-Policy"].Should().BeEmpty();
         }
+
+        [Fact]
+        public async Task form_post_mode_should_include_referrer_policy_header()
+        {
+            _response.Request = new ValidatedAuthorizeRequest
+            {
+                ClientId = "client",
+                ResponseMode = OidcConstants.ResponseModes.FormPost,
+                RedirectUri = "http://client/callback",
+                State = "state"
+            };
+
+            await _subject.ExecuteAsync(_context);
+
+            _context.Response.Headers["Referrer-Policy"].First().Should().Be("no-referrer");
+        }
+
+        [Fact]
+        public async Task unsupported_response_mode_should_throw()
+        {
+            _response.Request = new ValidatedAuthorizeRequest
+            {
+                ClientId = "client",
+                ResponseMode = "unsupported_response_mode",
+                RedirectUri = "http://client/callback",
+                State = "state"
+            };
+
+            Func<Task> act = () => _subject.ExecuteAsync(_context);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("Unsupported response mode");
+        }
+
+        [Fact]
+        public async Task null_response_request_should_throw()
+        {
+            _response.Request = null;
+
+            Func<Task> act = () => _subject.ExecuteAsync(_context);
+            await act.Should().ThrowAsync<ArgumentNullException>();
+        }
+
+        [Fact] 
+        public async Task error_with_null_redirect_uri_should_redirect_to_error_page()
+        {
+            _response.Error = "some_error";
+            _response.Request = new ValidatedAuthorizeRequest
+            {
+                RedirectUri = null
+            };
+
+            await _subject.ExecuteAsync(_context);
+
+            _mockErrorMessageStore.Messages.Count.Should().Be(1);
+            _context.Response.StatusCode.Should().Be(302);
+            var location = _context.Response.Headers["Location"].First();
+            location.Should().StartWith("https://server/error");
+        }
+
+        [Fact]
+        public async Task success_should_contain_session_state_when_provided()
+        {
+            _response.Request = new ValidatedAuthorizeRequest
+            {
+                ClientId = "client",
+                ResponseMode = OidcConstants.ResponseModes.Query,
+                RedirectUri = "http://client/callback"
+            };
+            _response.SessionState = "session_123";
+
+            await _subject.ExecuteAsync(_context);
+
+            var location = _context.Response.Headers["Location"].First();
+            location.Should().Contain("session_state=session_123");
+        }
+
+        [Fact]
+        public async Task form_post_should_handle_empty_response_parameters()
+        {
+            _response.Request = new ValidatedAuthorizeRequest
+            {
+                ClientId = "client",
+                ResponseMode = OidcConstants.ResponseModes.FormPost,
+                RedirectUri = "http://client/callback"
+            };
+
+            await _subject.ExecuteAsync(_context);
+
+            _context.Response.StatusCode.Should().Be(200);
+            _context.Response.ContentType.Should().StartWith("text/html");
+            _context.Response.Body.Seek(0, SeekOrigin.Begin);
+            using (var rdr = new StreamReader(_context.Response.Body))
+            {
+                var html = rdr.ReadToEnd();
+                html.Should().Contain("<form method='post' action='http://client/callback'>");
+                html.Should().NotContain("<input type='hidden' name='state'");
+            }
+        }
     }
 }

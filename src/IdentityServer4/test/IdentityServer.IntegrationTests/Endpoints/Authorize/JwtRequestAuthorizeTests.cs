@@ -170,7 +170,7 @@ namespace IdentityServer.IntegrationTests.Endpoints.Authorize
             _mockPipeline.Initialize();
         }
 
-        string CreateRequestJwt(string issuer, string audience, SigningCredentials credential, Claim[] claims, bool setJwtTyp = false)
+        string CreateRequestJwt(string issuer, string audience, SigningCredentials credential, Claim[] claims, bool setJwtTyp = false, DateTime? expiration = null)
         {
             var handler = new JwtSecurityTokenHandler();
             handler.OutboundClaimTypeMap.Clear();
@@ -179,7 +179,8 @@ namespace IdentityServer.IntegrationTests.Endpoints.Authorize
                 issuer: issuer, 
                 audience: audience, 
                 signingCredentials: credential, 
-                subject: Identity.Create("pwd", claims));
+                subject: Identity.Create("pwd", claims),
+                expires: expiration);
 
             if (setJwtTyp)
             {
@@ -1138,6 +1139,82 @@ namespace IdentityServer.IntegrationTests.Endpoints.Authorize
             _mockPipeline.LoginRequest.Should().BeNull();
 
             _mockPipeline.JwtRequestMessageHandler.InvokeWasCalled.Should().BeFalse();
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task expired_jwt_should_fail()
+        {
+            var requestJwt = CreateRequestJwt(
+                issuer: _client.ClientId,
+                audience: IdentityServerPipeline.BaseUrl,
+                credential: new X509SigningCredentials(TestCert.Load()),
+                claims: new[] {
+                    new Claim("client_id", _client.ClientId),
+                    new Claim("response_type", "id_token"),
+                    new Claim("scope", "openid profile"),
+                    new Claim("state", "123state"),
+                    new Claim("nonce", "123nonce"),
+                    new Claim("redirect_uri", "https://client/callback"),
+                },
+                setJwtExpiration: DateTime.UtcNow.AddMinutes(-5) // Expired 5 minutes ago
+            );
+
+            var url = _mockPipeline.CreateAuthorizeUrl(
+                clientId: _client.ClientId,
+                responseType: "id_token",
+                extra: new
+                {
+                    request = requestJwt
+                });
+            var response = await _mockPipeline.BrowserClient.GetAsync(url);
+
+            _mockPipeline.ErrorMessage.Error.Should().Be("invalid_request_object");
+            _mockPipeline.ErrorMessage.ErrorDescription.Should().Be("Invalid JWT request");
+            _mockPipeline.LoginRequest.Should().BeNull();
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task malformed_jwt_should_fail()
+        {
+            var url = _mockPipeline.CreateAuthorizeUrl(
+                clientId: _client.ClientId,
+                responseType: "id_token",
+                extra: new
+                {
+                    request = "invalid_jwt_format"
+                });
+            var response = await _mockPipeline.BrowserClient.GetAsync(url);
+
+            _mockPipeline.ErrorMessage.Error.Should().Be("invalid_request_object");
+            _mockPipeline.LoginRequest.Should().BeNull();
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task jwt_without_required_claims_should_fail()
+        {
+            var requestJwt = CreateRequestJwt(
+                issuer: _client.ClientId,
+                audience: IdentityServerPipeline.BaseUrl,
+                credential: new X509SigningCredentials(TestCert.Load()),
+                claims: new[] {
+                    // Missing required claims like response_type, scope, etc.
+                    new Claim("client_id", _client.ClientId),
+                });
+
+            var url = _mockPipeline.CreateAuthorizeUrl(
+                clientId: _client.ClientId,
+                responseType: "id_token",
+                extra: new
+                {
+                    request = requestJwt
+                });
+            var response = await _mockPipeline.BrowserClient.GetAsync(url);
+
+            _mockPipeline.ErrorMessage.Error.Should().Be("invalid_request_object");
+            _mockPipeline.LoginRequest.Should().BeNull();
         }
     }
 }

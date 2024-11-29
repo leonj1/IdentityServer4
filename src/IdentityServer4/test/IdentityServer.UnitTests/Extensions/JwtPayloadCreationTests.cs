@@ -65,5 +65,41 @@ namespace IdentityServer.UnitTests.Extensions
             scopes.Count().Should().Be(1);
             scopes.First().Value.Should().Be("scope1 scope2 scope3");
         }
+
+        [Fact]
+        public void Should_set_correct_expiration_time()
+        {
+            var clock = new SystemClock();
+            var options = new IdentityServerOptions();
+            
+            var payload = _token.CreateJwtPayload(clock, options, TestLogger.Create<JwtPayloadCreationTests>());
+
+            payload.Should().NotBeNull();
+            var exp = payload.Claims.First(c => c.Type == JwtClaimTypes.Expiration).Value;
+            var expDateTime = DateTimeOffset.FromUnixTimeSeconds(long.Parse(exp)).UtcDateTime;
+            expDateTime.Should().Be(_token.CreationTime.AddSeconds(_token.Lifetime));
+        }
+
+        [Fact]
+        public void Should_set_correct_issuer()
+        {
+            var options = new IdentityServerOptions();
+            var payload = _token.CreateJwtPayload(new SystemClock(), options, TestLogger.Create<JwtPayloadCreationTests>());
+
+            payload.Should().NotBeNull();
+            var issuer = payload.Claims.First(c => c.Type == JwtClaimTypes.Issuer).Value;
+            issuer.Should().Be(_token.Issuer);
+        }
+
+        [Fact]
+        public void Should_set_correct_client_id()
+        {
+            var options = new IdentityServerOptions();
+            var payload = _token.CreateJwtPayload(new SystemClock(), options, TestLogger.Create<JwtPayloadCreationTests>());
+
+            payload.Should().NotBeNull();
+            var clientId = payload.Claims.First(c => c.Type == JwtClaimTypes.ClientId).Value;
+            clientId.Should().Be(_token.ClientId);
+        }
     }
 }

@@ -1159,5 +1159,89 @@ namespace IdentityServer.IntegrationTests.Endpoints.Authorize
 
             _mockPipeline.LoginWasCalled.Should().BeTrue();
         }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task prompt_none_should_error_when_user_not_logged_in()
+        {
+            var url = _mockPipeline.CreateAuthorizeUrl(
+                clientId: "client1",
+                responseType: "id_token",
+                scope: "openid profile",
+                redirectUri: "https://client1/callback",
+                state: "123_state",
+                nonce: "123_nonce",
+                extra: new { prompt = "none" }
+            );
+            var response = await _mockPipeline.BrowserClient.GetAsync(url);
+
+            _mockPipeline.ErrorWasCalled.Should().BeTrue();
+            _mockPipeline.ErrorMessage.Error.Should().Be("login_required");
+            _mockPipeline.ErrorMessage.RedirectUri.Should().StartWith("https://client1/callback");
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task prompt_none_should_error_when_consent_required()
+        {
+            await _mockPipeline.LoginAsync("bob");
+
+            var url = _mockPipeline.CreateAuthorizeUrl(
+                clientId: "client2", // client2 requires consent
+                responseType: "id_token",
+                scope: "openid profile",
+                redirectUri: "https://client2/callback",
+                state: "123_state",
+                nonce: "123_nonce",
+                extra: new { prompt = "none" }
+            );
+            var response = await _mockPipeline.BrowserClient.GetAsync(url);
+
+            _mockPipeline.ErrorWasCalled.Should().BeTrue();
+            _mockPipeline.ErrorMessage.Error.Should().Be("consent_required");
+            _mockPipeline.ErrorMessage.RedirectUri.Should().StartWith("https://client2/callback");
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task invalid_prompt_value_should_error()
+        {
+            await _mockPipeline.LoginAsync("bob");
+
+            var url = _mockPipeline.CreateAuthorizeUrl(
+                clientId: "client1",
+                responseType: "id_token",
+                scope: "openid profile",
+                redirectUri: "https://client1/callback",
+                state: "123_state",
+                nonce: "123_nonce",
+                extra: new { prompt = "invalid" }
+            );
+            var response = await _mockPipeline.BrowserClient.GetAsync(url);
+
+            _mockPipeline.ErrorWasCalled.Should().BeTrue();
+            _mockPipeline.ErrorMessage.Error.Should().Be("invalid_request");
+            _mockPipeline.ErrorMessage.ErrorDescription.Should().Contain("prompt");
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task prompt_select_account_should_show_login_page()
+        {
+            await _mockPipeline.LoginAsync("bob");
+
+            var url = _mockPipeline.CreateAuthorizeUrl(
+                clientId: "client1",
+                responseType: "id_token",
+                scope: "openid profile",
+                redirectUri: "https://client1/callback",
+                state: "123_state",
+                nonce: "123_nonce",
+                extra: new { prompt = "select_account" }
+            );
+            var response = await _mockPipeline.BrowserClient.GetAsync(url);
+
+            _mockPipeline.LoginWasCalled.Should().BeTrue();
+        }
     }
 }
