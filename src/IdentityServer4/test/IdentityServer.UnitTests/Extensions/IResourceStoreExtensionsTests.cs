@@ -142,6 +142,44 @@ namespace IdentityServer.UnitTests.Extensions
             result.ApiResources.Count.Should().Be(1);
         }
 
+        [Fact]
+        public void FindResourcesByScopeAsync_with_overlapping_identity_and_api_scope_names_should_fail()
+        {
+            var store = new MockResourceStore()
+            {
+                IdentityResources = {
+                    new IdentityResource { Name = "overlap" }
+                },
+                ApiScopes = {
+                    new ApiScope("overlap")
+                }
+            };
+
+            Func<Task> act = () => store.FindResourcesByScopeAsync(new string[] { "overlap" });
+            act.Should().Throw<Exception>()
+               .And.Message.Should().Contain("Found identity scopes and API scopes that use the same names");
+        }
+
+        [Fact]
+        public async Task FindResourcesByScopeAsync_with_non_overlapping_identity_and_api_scope_names_should_succeed()
+        {
+            var store = new MockResourceStore()
+            {
+                IdentityResources = {
+                    new IdentityResource { Name = "identity" }
+                },
+                ApiScopes = {
+                    new ApiScope("api")
+                }
+            };
+
+            var result = await store.FindResourcesByScopeAsync(new string[] { "identity", "api" });
+            result.IdentityResources.Count.Should().Be(1);
+            result.ApiScopes.Count.Should().Be(1);
+            result.IdentityResources.First().Name.Should().Be("identity");
+            result.ApiScopes.First().Name.Should().Be("api");
+        }
+
         public class MockResourceStore : IResourceStore
         {
             public List<IdentityResource> IdentityResources { get; set; } = new List<IdentityResource>();
@@ -191,6 +229,41 @@ namespace IdentityServer.UnitTests.Extensions
                 var result = new Resources(IdentityResources, ApiResources, ApiScopes);
                 return Task.FromResult(result);
             }
+        }
+
+        [Fact]
+        public async Task FindResourcesByScopeAsync_with_null_scope_names_should_throw()
+        {
+            var store = new MockResourceStore();
+        
+            Func<Task> act = () => store.FindResourcesByScopeAsync(null);
+            await act.Should().ThrowAsync<ArgumentNullException>();
+        }
+
+        [Fact]
+        public async Task FindResourcesByScopeAsync_with_empty_scope_names_should_return_empty_resources()
+        {
+            var store = new MockResourceStore()
+            {
+                IdentityResources = { new IdentityResource { Name = "identity" } },
+                ApiScopes = { new ApiScope("api") }
+            };
+
+            var result = await store.FindResourcesByScopeAsync(new string[] { });
+            result.IdentityResources.Should().BeEmpty();
+            result.ApiScopes.Should().BeEmpty();
+            result.ApiResources.Should().BeEmpty();
+        }
+
+        [Fact] 
+        public async Task GetAllEnabledResourcesAsync_with_empty_store_should_return_empty_resources()
+        {
+            var store = new MockResourceStore();
+
+            var result = await store.GetAllEnabledResourcesAsync();
+            result.IdentityResources.Should().BeEmpty();
+            result.ApiScopes.Should().BeEmpty();
+            result.ApiResources.Should().BeEmpty();
         }
     }
 }

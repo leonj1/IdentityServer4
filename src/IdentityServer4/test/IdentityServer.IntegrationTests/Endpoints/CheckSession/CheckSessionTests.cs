@@ -29,5 +29,42 @@ namespace IdentityServer.IntegrationTests.Endpoints.CheckSession
 
             response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
         }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task post_request_should_return_405()
+        {
+            var response = await _mockPipeline.BackChannelClient.PostAsync(IdentityServerPipeline.CheckSessionEndpoint, null);
+
+            response.StatusCode.Should().Be(HttpStatusCode.MethodNotAllowed);
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task get_request_should_return_html_content()
+        {
+            var response = await _mockPipeline.BackChannelClient.GetAsync(IdentityServerPipeline.CheckSessionEndpoint);
+
+            response.Content.Headers.ContentType.MediaType.Should().Be("text/html");
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task get_request_should_return_success_status()
+        {
+            var response = await _mockPipeline.BackChannelClient.GetAsync(IdentityServerPipeline.CheckSessionEndpoint);
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task get_request_should_include_cache_control_headers()
+        {
+            var response = await _mockPipeline.BackChannelClient.GetAsync(IdentityServerPipeline.CheckSessionEndpoint);
+
+            response.Headers.CacheControl.NoCache.Should().BeTrue();
+            response.Headers.CacheControl.NoStore.Should().BeTrue();
+        }
     }
 }

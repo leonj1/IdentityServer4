@@ -193,5 +193,66 @@ namespace IdentityServer.UnitTests.Validation
             result.IsError.Should().BeTrue();
             result.Error.Should().Be(OidcConstants.AuthorizeErrors.InvalidScope);
         }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Empty_Scope_Value()
+        {
+            var parameters = new NameValueCollection { { "scope", "" } };
+            var validator = Factory.CreateDeviceAuthorizationRequestValidator();
+
+            var result = await validator.ValidateAsync(parameters, 
+                new ClientSecretValidationResult { Client = testClient });
+
+            result.IsError.Should().BeTrue();
+            result.Error.Should().Be(OidcConstants.AuthorizeErrors.InvalidScope);
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Whitespace_Only_Scope()
+        {
+            var parameters = new NameValueCollection { { "scope", "   " } };
+            var validator = Factory.CreateDeviceAuthorizationRequestValidator();
+
+            var result = await validator.ValidateAsync(parameters,
+                new ClientSecretValidationResult { Client = testClient });
+
+            result.IsError.Should().BeTrue();
+            result.Error.Should().Be(OidcConstants.AuthorizeErrors.InvalidScope);
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Malformed_Scope_With_Multiple_Spaces()
+        {
+            var parameters = new NameValueCollection { { "scope", "openid   resource    profile" } };
+            var validator = Factory.CreateDeviceAuthorizationRequestValidator();
+
+            var result = await validator.ValidateAsync(parameters,
+                new ClientSecretValidationResult { Client = testClient });
+
+            result.IsError.Should().BeFalse();
+            result.ValidatedRequest.RequestedScopes.Should().Contain("openid");
+            result.ValidatedRequest.RequestedScopes.Should().Contain("resource");
+            result.ValidatedRequest.RequestedScopes.Should().Contain("profile");
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Duplicate_Scopes_Should_Be_Removed()
+        {
+            var parameters = new NameValueCollection { { "scope", "openid resource openid profile resource" } };
+            var validator = Factory.CreateDeviceAuthorizationRequestValidator();
+
+            var result = await validator.ValidateAsync(parameters,
+                new ClientSecretValidationResult { Client = testClient });
+
+            result.IsError.Should().BeFalse();
+            result.ValidatedRequest.RequestedScopes.Count().Should().Be(3);
+            result.ValidatedRequest.RequestedScopes.Should().Contain("openid");
+            result.ValidatedRequest.RequestedScopes.Should().Contain("resource");
+            result.ValidatedRequest.RequestedScopes.Should().Contain("profile");
+        }
     }
 }

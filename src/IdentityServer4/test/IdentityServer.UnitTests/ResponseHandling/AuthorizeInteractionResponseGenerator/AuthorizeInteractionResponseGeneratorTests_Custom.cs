@@ -170,5 +170,85 @@ namespace IdentityServer.UnitTests.ResponseHandling.AuthorizeInteractionResponse
             result.IsError.Should().BeTrue();
             result.Error.Should().Be("consent_required");
         }
+
+        [Fact]
+        public async Task ProcessInteractionAsync_with_overridden_consent_returns_redirect_should_return_redirect()
+        {
+            var request = new ValidatedAuthorizeRequest
+            {
+                ClientId = "foo",
+                Subject = new IdentityServerUser("123")
+                {
+                    IdentityProvider = IdentityServerConstants.LocalIdentityProvider
+                }.CreatePrincipal(),
+                Client = new Client
+                {
+                },
+            };
+
+            _subject.ProcessConsentResponse = new InteractionResponse
+            {
+                RedirectUrl = "/custom-consent"
+            };
+
+            var result = await _subject.ProcessInteractionAsync(request);
+
+            result.IsRedirect.Should().BeTrue();
+            result.RedirectUrl.Should().Be("/custom-consent");
+        }
+
+        [Fact]
+        public async Task ProcessInteractionAsync_with_prompt_none_and_consent_returns_redirect_should_return_error()
+        {
+            var request = new ValidatedAuthorizeRequest
+            {
+                ClientId = "foo",
+                Subject = new IdentityServerUser("123")
+                {
+                    IdentityProvider = IdentityServerConstants.LocalIdentityProvider
+                }.CreatePrincipal(),
+                Client = new Client
+                {
+                },
+                PromptModes = new[] { PromptModes.None },
+            };
+
+            _subject.ProcessConsentResponse = new InteractionResponse
+            {
+                RedirectUrl = "/custom-consent"
+            };
+
+            var result = await _subject.ProcessInteractionAsync(request);
+
+            result.IsError.Should().BeTrue();
+            result.Error.Should().Be("interaction_required");
+            result.RedirectUrl.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task ProcessInteractionAsync_with_null_response_should_continue_pipeline()
+        {
+            var request = new ValidatedAuthorizeRequest
+            {
+                ClientId = "foo",
+                Subject = new IdentityServerUser("123")
+                {
+                    IdentityProvider = IdentityServerConstants.LocalIdentityProvider
+                }.CreatePrincipal(),
+                Client = new Client
+                {
+                },
+            };
+
+            _subject.ProcessLoginResponse = null;
+            _subject.ProcessConsentResponse = null;
+
+            var result = await _subject.ProcessInteractionAsync(request);
+
+            result.IsLogin.Should().BeFalse();
+            result.IsError.Should().BeFalse();
+            result.IsConsent.Should().BeFalse();
+            result.RedirectUrl.Should().BeNull();
+        }
     }
 }

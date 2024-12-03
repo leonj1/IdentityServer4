@@ -104,5 +104,53 @@ namespace IdentityServer.UnitTests.Validation.Secrets
 
             result.IsError.Should().BeTrue();
         }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task empty_client_id_should_fail()
+        {
+            var validator = Factory.CreateClientSecretValidator();
+
+            var context = new DefaultHttpContext();
+            var body = "client_id=&client_secret=secret";
+
+            context.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body));
+            context.Request.ContentType = "application/x-www-form-urlencoded";
+
+            var result = await validator.ValidateAsync(context);
+
+            result.IsError.Should().BeTrue();
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task malformed_content_type_should_fail()
+        {
+            var validator = Factory.CreateClientSecretValidator();
+
+            var context = new DefaultHttpContext();
+            var body = "client_id=roclient&client_secret=secret";
+
+            context.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body));
+            context.Request.ContentType = "invalid_content_type";
+
+            var result = await validator.ValidateAsync(context);
+
+            result.IsError.Should().BeTrue();
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task null_body_should_fail()
+        {
+            var validator = Factory.CreateClientSecretValidator();
+
+            var context = new DefaultHttpContext();
+            context.Request.ContentType = "application/x-www-form-urlencoded";
+
+            var result = await validator.ValidateAsync(context);
+
+            result.IsError.Should().BeTrue();
+        }
     }
 }

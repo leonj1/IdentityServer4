@@ -178,5 +178,64 @@ namespace IdentityServer.UnitTests.Cors
             _mockPolicy.WasCalled.Should().BeTrue();
             _mockInner.WasCalled.Should().BeFalse();
         }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task missing_origin_header_should_not_call_policy()
+        {
+            _allowedPaths.Add("/foo");
+            Init();
+
+            var ctx = new DefaultHttpContext();
+            ctx.Request.Scheme = "https";
+            ctx.Request.Host = new HostString("server");
+            ctx.Request.Path = new PathString("/foo");
+
+            var response = await _subject.GetPolicyAsync(ctx, _options.Cors.CorsPolicyName);
+
+            _mockPolicy.WasCalled.Should().BeFalse();
+            _mockInner.WasCalled.Should().BeFalse();
+        }
+
+        [Theory]
+        [InlineData("/FOO")]
+        [InlineData("/Foo")]
+        [InlineData("/foo")]
+        [Trait("Category", Category)]
+        public async Task path_should_be_case_insensitive(string path)
+        {
+            _allowedPaths.Add("/foo");
+            Init();
+
+            var ctx = new DefaultHttpContext();
+            ctx.Request.Scheme = "https";
+            ctx.Request.Host = new HostString("server");
+            ctx.Request.Path = new PathString(path);
+            ctx.Request.Headers.Add("Origin", "http://notserver");
+
+            var response = await _subject.GetPolicyAsync(ctx, _options.Cors.CorsPolicyName);
+
+            _mockPolicy.WasCalled.Should().BeTrue();
+            _mockInner.WasCalled.Should().BeFalse();
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task empty_origin_header_should_not_call_policy()
+        {
+            _allowedPaths.Add("/foo");
+            Init();
+
+            var ctx = new DefaultHttpContext();
+            ctx.Request.Scheme = "https";
+            ctx.Request.Host = new HostString("server");
+            ctx.Request.Path = new PathString("/foo");
+            ctx.Request.Headers.Add("Origin", string.Empty);
+
+            var response = await _subject.GetPolicyAsync(ctx, _options.Cors.CorsPolicyName);
+
+            _mockPolicy.WasCalled.Should().BeFalse();
+            _mockInner.WasCalled.Should().BeFalse();
+        }
     }
 }

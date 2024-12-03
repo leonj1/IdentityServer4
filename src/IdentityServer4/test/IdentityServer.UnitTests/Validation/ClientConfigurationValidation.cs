@@ -480,6 +480,72 @@ namespace IdentityServer.UnitTests.Validation
             result.IsValid.Should().BeTrue();
         }
 
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Device_flow_client_without_secret_should_succeed()
+        {
+            var client = new Client
+            {
+                ClientId = "id",
+                AllowedGrantTypes = GrantTypes.DeviceFlow,
+                RequireClientSecret = false,
+                AllowedScopes = { "foo" }
+            };
+
+            var context = await ValidateAsync(client);
+            context.IsValid.Should().BeTrue();
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Device_flow_client_with_secret_should_succeed()
+        {
+            var client = new Client
+            {
+                ClientId = "id",
+                AllowedGrantTypes = GrantTypes.DeviceFlow,
+                RequireClientSecret = true,
+                ClientSecrets = { new Secret("secret".Sha256()) },
+                AllowedScopes = { "foo" }
+            };
+
+            var context = await ValidateAsync(client);
+            context.IsValid.Should().BeTrue();
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Client_with_invalid_refresh_token_expiration_should_fail()
+        {
+            var client = new Client
+            {
+                ClientId = "id",
+                AllowedGrantTypes = GrantTypes.ClientCredentials,
+                RequireClientSecret = true,
+                ClientSecrets = { new Secret("secret".Sha256()) },
+                AllowedScopes = { "foo" },
+                RefreshTokenExpiration = (TokenExpiration)999
+            };
+
+            await ShouldFailAsync(client, "invalid refresh token expiration value");
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Client_with_invalid_access_token_type_should_fail()
+        {
+            var client = new Client
+            {
+                ClientId = "id",
+                AllowedGrantTypes = GrantTypes.ClientCredentials,
+                RequireClientSecret = true,
+                ClientSecrets = { new Secret("secret".Sha256()) },
+                AllowedScopes = { "foo" },
+                AccessTokenType = (AccessTokenType)999
+            };
+
+            await ShouldFailAsync(client, "invalid access token type");
+        }
 
         private async Task<ClientConfigurationValidationContext> ValidateAsync(Client client)
         {

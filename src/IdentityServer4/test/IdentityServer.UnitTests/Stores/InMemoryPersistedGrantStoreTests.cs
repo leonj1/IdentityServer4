@@ -520,6 +520,83 @@ namespace IdentityServer.UnitTests.Stores
             }
         }
 
+        [Fact]
+        public async Task Remove_should_remove_grant()
+        {
+            await _subject.StoreAsync(new PersistedGrant() { Key = "key1" });
+            (await _subject.GetAsync("key1")).Should().NotBeNull();
+
+            await _subject.RemoveAsync("key1");
+            
+            (await _subject.GetAsync("key1")).Should().BeNull();
+        }
+
+        [Fact]
+        public async Task GetAll_should_filter_by_type()
+        {
+            await _subject.StoreAsync(new PersistedGrant() { Key = "key1", SubjectId = "sub1", ClientId = "client1", Type = "type1" });
+            await _subject.StoreAsync(new PersistedGrant() { Key = "key2", SubjectId = "sub1", ClientId = "client1", Type = "type2" });
+            
+            (await _subject.GetAllAsync(new PersistedGrantFilter
+            {
+                SubjectId = "sub1",
+                ClientId = "client1",
+                Type = "type1"
+            }))
+            .Select(x => x.Key).Should().BeEquivalentTo(new[] { "key1" });
+        }
+
+        [Fact]
+        public async Task GetAll_should_handle_empty_filter()
+        {
+            await _subject.StoreAsync(new PersistedGrant() { Key = "key1", SubjectId = "sub1", ClientId = "client1" });
+            await _subject.StoreAsync(new PersistedGrant() { Key = "key2", SubjectId = "sub1", ClientId = "client2" });
+            
+            var grants = await _subject.GetAllAsync(new PersistedGrantFilter());
+            grants.Select(x => x.Key).Should().BeEquivalentTo(new[] { "key1", "key2" });
+        }
+
+        [Fact]
+        public async Task Store_should_update_existing_grant()
+        {
+            var grant = new PersistedGrant() { Key = "key1", SubjectId = "sub1", ClientId = "client1", Data = "data1" };
+            await _subject.StoreAsync(grant);
+            
+            var updatedGrant = new PersistedGrant() { Key = "key1", SubjectId = "sub1", ClientId = "client1", Data = "data2" };
+            await _subject.StoreAsync(updatedGrant);
+
+            var result = await _subject.GetAsync("key1");
+            result.Data.Should().Be("data2");
+        }
+
+        [Fact]
+        public async Task Remove_should_handle_non_existing_grant()
+        {
+            // Should not throw
+            await _subject.RemoveAsync("nonexistent_key");
+        }
+
+        [Fact]
+        public async Task GetAll_should_handle_null_filter()
+        {
+            await _subject.StoreAsync(new PersistedGrant() { Key = "key1", SubjectId = "sub1", ClientId = "client1" });
+            
+            var grants = await _subject.GetAllAsync(null);
+            grants.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task RemoveAll_should_handle_null_filter()
+        {
+            await _subject.StoreAsync(new PersistedGrant() { Key = "key1", SubjectId = "sub1", ClientId = "client1" });
+            
+            // Should not throw
+            await _subject.RemoveAllAsync(null);
+            
+            var result = await _subject.GetAsync("key1");
+            result.Should().NotBeNull();
+        }
+
         private async Task Populate()
         {
             await _subject.StoreAsync(new PersistedGrant() { Key = "key1", SubjectId = "sub1", ClientId = "client1", SessionId = "session1" });

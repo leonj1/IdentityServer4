@@ -117,7 +117,7 @@ namespace IdentityServer.IntegrationTests.Clients
             fields.Should().Contain("custom", "custom");
         }
 
-        private Dictionary<string, object> GetFields(TokenResponse response)
+        public Dictionary<string, object> GetFields(TokenResponse response)
         {
             return response.Json.ToObject<Dictionary<string, object>>();
         }

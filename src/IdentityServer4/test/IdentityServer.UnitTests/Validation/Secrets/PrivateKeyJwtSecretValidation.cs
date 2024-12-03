@@ -243,5 +243,66 @@ namespace IdentityServer.UnitTests.Validation.Secrets
 
             result.Success.Should().BeFalse();
         }
+
+        [Fact]
+        public async Task Invalid_Audience()
+        {
+            var clientId = "certificate_valid";
+            var client = await _clients.FindEnabledClientByIdAsync(clientId);
+
+            var token = CreateToken(clientId);
+            token.Payload.Remove("aud");
+            token.Payload.Add("aud", "invalid_audience");
+            var secret = new ParsedSecret
+            {
+                Id = clientId,
+                Credential = new JwtSecurityTokenHandler().WriteToken(token),
+                Type = IdentityServerConstants.ParsedSecretTypes.JwtBearer
+            };
+
+            var result = await _validator.ValidateAsync(client.ClientSecrets, secret);
+
+            result.Success.Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task Missing_JTI_Claim()
+        {
+            var clientId = "certificate_valid";
+            var client = await _clients.FindEnabledClientByIdAsync(clientId);
+
+            var token = CreateToken(clientId);
+            token.Payload.Remove("jti");
+            var secret = new ParsedSecret
+            {
+                Id = clientId,
+                Credential = new JwtSecurityTokenHandler().WriteToken(token),
+                Type = IdentityServerConstants.ParsedSecretTypes.JwtBearer
+            };
+
+            var result = await _validator.ValidateAsync(client.ClientSecrets, secret);
+
+            result.Success.Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task Missing_IAT_Claim()
+        {
+            var clientId = "certificate_valid";
+            var client = await _clients.FindEnabledClientByIdAsync(clientId);
+
+            var token = CreateToken(clientId);
+            token.Payload.Remove(JwtClaimTypes.IssuedAt);
+            var secret = new ParsedSecret
+            {
+                Id = clientId,
+                Credential = new JwtSecurityTokenHandler().WriteToken(token),
+                Type = IdentityServerConstants.ParsedSecretTypes.JwtBearer
+            };
+
+            var result = await _validator.ValidateAsync(client.ClientSecrets, secret);
+
+            result.Success.Should().BeFalse();
+        }
     }
 }

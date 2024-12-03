@@ -174,5 +174,71 @@ namespace IdentityServer.UnitTests.Validation.Secrets
 
             secret.Should().BeNull();
         }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async void BasicAuthentication_Request_With_Multiple_Colons()
+        {
+            var context = new DefaultHttpContext();
+
+            var headerValue = string.Format("Basic {0}",
+                Convert.ToBase64String(Encoding.UTF8.GetBytes("client:secret:extra")));
+            context.Request.Headers.Add("Authorization", new StringValues(headerValue));
+
+            var secret = await _parser.ParseAsync(context);
+
+            secret.Should().BeNull();
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async void BasicAuthentication_Request_With_Unicode_Credentials()
+        {
+            var context = new DefaultHttpContext();
+
+            var headerValue = string.Format("Basic {0}",
+                Convert.ToBase64String(Encoding.UTF8.GetBytes("clientユーザー:secretパスワード")));
+            context.Request.Headers.Add("Authorization", new StringValues(headerValue));
+
+            var secret = await _parser.ParseAsync(context);
+
+            secret.Type.Should().Be(IdentityServerConstants.ParsedSecretTypes.SharedSecret);
+            secret.Id.Should().Be("clientユーザー");
+            secret.Credential.Should().Be("secretパスワード");
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async void BasicAuthentication_Request_With_Whitespace_In_Credentials()
+        {
+            var context = new DefaultHttpContext();
+
+            var headerValue = string.Format("Basic {0}",
+                Convert.ToBase64String(Encoding.UTF8.GetBytes("client id:secret value")));
+            context.Request.Headers.Add("Authorization", new StringValues(headerValue));
+
+            var secret = await _parser.ParseAsync(context);
+
+            secret.Type.Should().Be(IdentityServerConstants.ParsedSecretTypes.SharedSecret);
+            secret.Id.Should().Be("client id");
+            secret.Credential.Should().Be("secret value");
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async void BasicAuthentication_Request_With_Special_Characters()
+        {
+            var context = new DefaultHttpContext();
+
+            var headerValue = string.Format("Basic {0}",
+                Convert.ToBase64String(Encoding.UTF8.GetBytes("client@domain.com:secret#123$")));
+            context.Request.Headers.Add("Authorization", new StringValues(headerValue));
+
+            var secret = await _parser.ParseAsync(context);
+
+            secret.Type.Should().Be(IdentityServerConstants.ParsedSecretTypes.SharedSecret);
+            secret.Id.Should().Be("client@domain.com");
+            secret.Credential.Should().Be("secret#123$");
+        }
     }
 }

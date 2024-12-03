@@ -69,5 +69,55 @@ namespace IdentityServer.UnitTests.Extensions
 
             services.Any(x => x.ImplementationType == typeof(CustomResourceStore)).Should().BeTrue();
         }
+
+        [Fact]
+        public void AddClientStoreCache_should_register_caching_decorator()
+        {
+            var services = new ServiceCollection();
+            var identityServerBuilder = new IdentityServerBuilder(services);
+
+            identityServerBuilder.AddClientStoreCache<CustomClientStore>();
+
+            services.Any(x => x.ServiceType == typeof(IClientStore) && 
+                            x.ImplementationType.Name.Contains("Caching")).Should().BeTrue();
+        }
+
+        [Fact]
+        public void AddResourceStoreCache_should_register_caching_decorator()
+        {
+            var services = new ServiceCollection();
+            var identityServerBuilder = new IdentityServerBuilder(services);
+
+            identityServerBuilder.AddResourceStoreCache<CustomResourceStore>();
+
+            services.Any(x => x.ServiceType == typeof(IResourceStore) && 
+                            x.ImplementationType.Name.Contains("Caching")).Should().BeTrue();
+        }
+
+        [Fact]
+        public void AddClientStoreCache_should_preserve_original_registration()
+        {
+            var services = new ServiceCollection();
+            var identityServerBuilder = new IdentityServerBuilder(services);
+
+            identityServerBuilder.AddClientStoreCache<CustomClientStore>();
+
+            var registrations = services.Where(x => x.ServiceType == typeof(IClientStore)).ToList();
+            registrations.Should().HaveCount(2);
+            registrations.Should().Contain(x => x.ImplementationType == typeof(CustomClientStore));
+        }
+
+        [Fact]
+        public void AddResourceStoreCache_should_preserve_original_registration()
+        {
+            var services = new ServiceCollection();
+            var identityServerBuilder = new IdentityServerBuilder(services);
+
+            identityServerBuilder.AddResourceStoreCache<CustomResourceStore>();
+
+            var registrations = services.Where(x => x.ServiceType == typeof(IResourceStore)).ToList();
+            registrations.Should().HaveCount(2);
+            registrations.Should().Contain(x => x.ImplementationType == typeof(CustomResourceStore));
+        }
     }
 }

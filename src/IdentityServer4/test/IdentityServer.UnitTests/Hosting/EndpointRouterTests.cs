@@ -109,6 +109,46 @@ namespace IdentityServer.UnitTests.Hosting
             result.Should().BeNull();
         }
 
+        [Fact]
+        public void Find_should_be_case_sensitive()
+        {
+            _endpoints.Add(new IdentityServer4.Hosting.Endpoint("ep1", "/EP1", typeof(MyEndpointHandler)));
+
+            var ctx = new DefaultHttpContext();
+            ctx.Request.Path = new PathString("/ep1");
+            ctx.RequestServices = new StubServiceProvider();
+
+            var result = _subject.Find(ctx);
+            result.Should().BeNull();
+        }
+
+        [Fact]
+        public void Find_should_ignore_query_string()
+        {
+            _endpoints.Add(new IdentityServer4.Hosting.Endpoint("ep1", "/ep1", typeof(MyEndpointHandler)));
+
+            var ctx = new DefaultHttpContext();
+            ctx.Request.Path = new PathString("/ep1");
+            ctx.Request.QueryString = new QueryString("?param=value");
+            ctx.RequestServices = new StubServiceProvider();
+
+            var result = _subject.Find(ctx);
+            result.Should().BeOfType<MyEndpointHandler>();
+        }
+
+        [Fact]
+        public void Find_should_throw_for_invalid_handler_type()
+        {
+            _endpoints.Add(new IdentityServer4.Hosting.Endpoint("ep1", "/ep1", typeof(string)));
+
+            var ctx = new DefaultHttpContext();
+            ctx.Request.Path = new PathString("/ep1");
+            ctx.RequestServices = new StubServiceProvider();
+
+            Action act = () => _subject.Find(ctx);
+            act.Should().Throw<InvalidOperationException>();
+        }
+
         private class MyEndpointHandler : IEndpointHandler
         {
             public Task<IEndpointResult> ProcessAsync(HttpContext context)

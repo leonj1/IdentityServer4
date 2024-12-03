@@ -237,5 +237,74 @@ namespace IdentityServer.UnitTests.Validation
             
             context.Result.IsError.Should().BeFalse();
         }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Invalid_DeviceCode_Format()
+        {
+            var client = await _clients.FindClientByIdAsync("device_flow");
+            var service = Factory.CreateDeviceCodeService();
+            var validator = Factory.CreateDeviceCodeValidator(service);
+
+            var request = new ValidatedTokenRequest();
+            request.SetClient(client);
+
+            var context = new DeviceCodeValidationContext { DeviceCode = "invalid_format", Request = request };
+
+            await validator.ValidateAsync(context);
+
+            context.Result.IsError.Should().BeTrue();
+            context.Result.Error.Should().Be(OidcConstants.TokenErrors.InvalidGrant);
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Revoked_DeviceCode()
+        {
+            var client = await _clients.FindClientByIdAsync("device_flow");
+            var service = Factory.CreateDeviceCodeService();
+
+            var handle = await service.StoreDeviceAuthorizationAsync(Guid.NewGuid().ToString(), deviceCode);
+            await service.RemoveByDeviceCodeAsync(handle);
+
+            var validator = Factory.CreateDeviceCodeValidator(service);
+
+            var request = new ValidatedTokenRequest();
+            request.SetClient(client);
+
+            var context = new DeviceCodeValidationContext { DeviceCode = handle, Request = request };
+
+            await validator.ValidateAsync(context);
+
+            context.Result.IsError.Should().BeTrue();
+            context.Result.Error.Should().Be(OidcConstants.TokenErrors.InvalidGrant);
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Multiple_Polling_Attempts()
+        {
+            var client = await _clients.FindClientByIdAsync("device_flow");
+            var service = Factory.CreateDeviceCodeService();
+            var throttlingService = new TestDeviceFlowThrottlingService(false);
+
+            var handle = await service.StoreDeviceAuthorizationAsync(Guid.NewGuid().ToString(), deviceCode);
+            var validator = Factory.CreateDeviceCodeValidator(service, throttlingService: throttlingService);
+
+            var request = new ValidatedTokenRequest();
+            request.SetClient(client);
+
+            // First attempt should succeed
+            var context1 = new DeviceCodeValidationContext { DeviceCode = handle, Request = request };
+            await validator.ValidateAsync(context1);
+            context1.Result.IsError.Should().BeFalse();
+
+            // Simulate throttling on second attempt
+            throttlingService.ShouldSlowDown = true;
+            var context2 = new DeviceCodeValidationContext { DeviceCode = handle, Request = request };
+            await validator.ValidateAsync(context2);
+            context2.Result.IsError.Should().BeTrue();
+            context2.Result.Error.Should().Be(OidcConstants.TokenErrors.SlowDown);
+        }
     }
 }

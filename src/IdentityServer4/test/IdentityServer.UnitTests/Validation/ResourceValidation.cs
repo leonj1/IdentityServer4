@@ -334,5 +334,71 @@ namespace IdentityServer.UnitTests.Validation
             result.RawScopeValues.Count().Should().Be(1);
             result.RawScopeValues.Should().BeEquivalentTo(new[] { "resource" });
         }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Empty_Scope_Request_Should_Fail()
+        {
+            var validator = Factory.CreateResourceValidator(_store);
+            var result = await validator.ValidateRequestedResourcesAsync(new IdentityServer4.Validation.ResourceValidationRequest
+            {
+                Client = _restrictedClient,
+                Scopes = new string[] { }
+            });
+
+            result.Succeeded.Should().BeFalse();
+            result.Resources.ApiResources.Should().BeEmpty();
+            result.Resources.IdentityResources.Should().BeEmpty();
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Null_Scope_Request_Should_Fail()
+        {
+            var validator = Factory.CreateResourceValidator(_store);
+            var result = await validator.ValidateRequestedResourcesAsync(new IdentityServer4.Validation.ResourceValidationRequest
+            {
+                Client = _restrictedClient,
+                Scopes = null
+            });
+
+            result.Succeeded.Should().BeFalse();
+            result.Resources.ApiResources.Should().BeEmpty();
+            result.Resources.IdentityResources.Should().BeEmpty();
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Required_Scope_Missing_Should_Fail()
+        {
+            var scopes = "resource2".ParseScopesString(); // Missing required resource1
+
+            var validator = Factory.CreateResourceValidator(_store);
+            var result = await validator.ValidateRequestedResourcesAsync(new IdentityServer4.Validation.ResourceValidationRequest
+            {
+                Client = new Client { AllowedScopes = { "resource1", "resource2" } },
+                Scopes = scopes
+            });
+
+            result.Succeeded.Should().BeFalse();
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Mixed_Valid_and_Invalid_Scopes_Should_Fail()
+        {
+            var scopes = "openid invalid1 resource1 invalid2".ParseScopesString();
+
+            var validator = Factory.CreateResourceValidator(_store);
+            var result = await validator.ValidateRequestedResourcesAsync(new IdentityServer4.Validation.ResourceValidationRequest
+            {
+                Client = _restrictedClient,
+                Scopes = scopes
+            });
+
+            result.Succeeded.Should().BeFalse();
+            result.InvalidScopes.Should().Contain("invalid1");
+            result.InvalidScopes.Should().Contain("invalid2");
+        }
     }
 }

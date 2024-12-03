@@ -140,5 +140,68 @@ namespace IdentityServer.UnitTests.Validation.Secrets
 
             secret.Should().BeNull();
         }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async void Invalid_ContentType()
+        {
+            var context = new DefaultHttpContext();
+            var body = "client_id=client&client_secret=secret";
+            
+            context.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body));
+            context.Request.ContentType = "application/json";
+
+            var secret = await _parser.ParseAsync(context);
+
+            secret.Should().BeNull();
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async void Empty_ClientCredentials()
+        {
+            var context = new DefaultHttpContext();
+            var body = "client_id=&client_secret=";
+
+            context.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body));
+            context.Request.ContentType = "application/x-www-form-urlencoded";
+
+            var secret = await _parser.ParseAsync(context);
+
+            secret.Should().BeNull();
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async void Whitespace_ClientCredentials()
+        {
+            var context = new DefaultHttpContext();
+            var body = "client_id=  &client_secret=  ";
+
+            context.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body));
+            context.Request.ContentType = "application/x-www-form-urlencoded";
+
+            var secret = await _parser.ParseAsync(context);
+
+            secret.Should().BeNull();
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async void Multiple_ClientCredentials()
+        {
+            var context = new DefaultHttpContext();
+            var body = "client_id=client1&client_id=client2&client_secret=secret1&client_secret=secret2";
+
+            context.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body));
+            context.Request.ContentType = "application/x-www-form-urlencoded";
+
+            var secret = await _parser.ParseAsync(context);
+
+            // Should use the first occurrence of each parameter
+            secret.Type.Should().Be(IdentityServerConstants.ParsedSecretTypes.SharedSecret);
+            secret.Id.Should().Be("client1");
+            secret.Credential.Should().Be("secret1");
+        }
     }
 }

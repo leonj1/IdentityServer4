@@ -83,5 +83,49 @@ namespace IdentityServer.UnitTests.Validation
             result.IsError.Should().BeTrue();
             result.Error.Should().Be(OidcConstants.ProtectedResourceErrors.InvalidToken);
         }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Invalid_Token_Format()
+        {
+            var validator = Factory.CreateTokenValidator();
+            var result = await validator.ValidateIdentityTokenAsync("invalid_token_format", "roclient");
+
+            result.IsError.Should().BeTrue();
+            result.Error.Should().Be(OidcConstants.ProtectedResourceErrors.InvalidToken);
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Expired_Token()
+        {
+            var creator = Factory.CreateDefaultTokenCreator();
+            var token = TokenFactory.CreateIdentityToken("roclient", "valid");
+            token.CreationTime = DateTime.UtcNow.AddHours(-1);
+            token.Lifetime = 1; // 1 second lifetime
+            var jwt = await creator.CreateTokenAsync(token);
+
+            var validator = Factory.CreateTokenValidator();
+            var result = await validator.ValidateIdentityTokenAsync(jwt, "roclient");
+
+            result.IsError.Should().BeTrue();
+            result.Error.Should().Be(OidcConstants.ProtectedResourceErrors.ExpiredToken);
+        }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Missing_Required_Claims()
+        {
+            var creator = Factory.CreateDefaultTokenCreator();
+            var token = TokenFactory.CreateIdentityToken("roclient", "valid");
+            token.Claims.Clear(); // Remove all claims
+            var jwt = await creator.CreateTokenAsync(token);
+
+            var validator = Factory.CreateTokenValidator();
+            var result = await validator.ValidateIdentityTokenAsync(jwt, "roclient");
+
+            result.IsError.Should().BeTrue();
+            result.Error.Should().Be(OidcConstants.ProtectedResourceErrors.InvalidToken);
+        }
     }
 }

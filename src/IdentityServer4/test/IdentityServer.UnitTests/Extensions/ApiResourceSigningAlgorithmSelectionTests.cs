@@ -136,5 +136,54 @@ namespace IdentityServer.UnitTests.Extensions
                 act.Should().Throw<InvalidOperationException>();
             }
         }
+
+        [Fact]
+        public void Null_resource_list_should_throw_ArgumentNullException()
+        {
+            List<ApiResource> resources = null;
+            Action act = () => resources.FindMatchingSigningAlgorithms();
+            act.Should().Throw<ArgumentNullException>();
+        }
+
+        [Fact]
+        public void Empty_resource_list_should_return_empty_collection()
+        {
+            var resources = new List<ApiResource>();
+            var result = resources.FindMatchingSigningAlgorithms();
+            result.Should().NotBeNull();
+            result.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void Resource_with_null_algorithms_should_be_skipped()
+        {
+            var resource1 = new ApiResource
+            {
+                AllowedAccessTokenSigningAlgorithms = null
+            };
+            var resource2 = new ApiResource
+            {
+                AllowedAccessTokenSigningAlgorithms = new[] { "RS256" }
+            };
+
+            var result = new List<ApiResource> { resource1, resource2 }.FindMatchingSigningAlgorithms();
+            result.Should().BeEquivalentTo(new[] { "RS256" });
+        }
+
+        [Fact]
+        public void Resource_with_empty_algorithms_should_be_skipped()
+        {
+            var resource1 = new ApiResource
+            {
+                AllowedAccessTokenSigningAlgorithms = new string[] { }
+            };
+            var resource2 = new ApiResource
+            {
+                AllowedAccessTokenSigningAlgorithms = new[] { "RS256" }
+            };
+
+            var result = new List<ApiResource> { resource1, resource2 }.FindMatchingSigningAlgorithms();
+            result.Should().BeEquivalentTo(new[] { "RS256" });
+        }
     }
 }

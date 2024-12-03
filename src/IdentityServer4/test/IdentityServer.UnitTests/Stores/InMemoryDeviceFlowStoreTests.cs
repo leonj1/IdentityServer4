@@ -133,5 +133,97 @@ namespace IdentityServer.UnitTests.Stores
 
             foundData.Should().BeNull();
         }
+
+        [Fact]
+        public async Task FindByUserCodeAsync_should_return_null_for_nonexistent_code()
+        {
+            var userCode = Guid.NewGuid().ToString();
+            var result = await _store.FindByUserCodeAsync(userCode);
+            result.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task FindByDeviceCodeAsync_should_return_null_for_nonexistent_code()
+        {
+            var deviceCode = Guid.NewGuid().ToString();
+            var result = await _store.FindByDeviceCodeAsync(deviceCode);
+            result.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task Expired_device_code_should_return_null()
+        {
+            var deviceCode = Guid.NewGuid().ToString();
+            var userCode = Guid.NewGuid().ToString();
+            var data = new DeviceCode
+            {
+                ClientId = Guid.NewGuid().ToString(),
+                CreationTime = DateTime.UtcNow.AddHours(-1),
+                Lifetime = 60, // 1 minute lifetime
+                IsAuthorized = false,
+                IsOpenId = true,
+                Subject = null,
+                RequestedScopes = new[] { "scope1" }
+            };
+
+            await _store.StoreDeviceAuthorizationAsync(deviceCode, userCode, data);
+            
+            var foundData = await _store.FindByDeviceCodeAsync(deviceCode);
+            foundData.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task Concurrent_updates_should_work()
+        {
+            var deviceCode = Guid.NewGuid().ToString();
+            var userCode = Guid.NewGuid().ToString();
+            var initialData = new DeviceCode
+            {
+                ClientId = Guid.NewGuid().ToString(),
+                CreationTime = DateTime.UtcNow,
+                Lifetime = 300,
+                IsAuthorized = false,
+                IsOpenId = true,
+                Subject = null,
+                RequestedScopes = new[] { "scope1" }
+            };
+
+            await _store.StoreDeviceAuthorizationAsync(deviceCode, userCode, initialData);
+
+            // Simulate concurrent updates
+            var update1 = new DeviceCode
+            {
+                ClientId = initialData.ClientId,
+                CreationTime = initialData.CreationTime,
+                Lifetime = initialData.Lifetime,
+                IsAuthorized = true,
+                IsOpenId = initialData.IsOpenId,
+                Subject = new ClaimsPrincipal(new ClaimsIdentity(new List<Claim> { new Claim("sub", "123") })),
+                RequestedScopes = initialData.RequestedScopes
+            };
+
+            var update2 = new DeviceCode
+            {
+                ClientId = initialData.ClientId,
+                CreationTime = initialData.CreationTime,
+                Lifetime = initialData.Lifetime,
+                IsAuthorized = true,
+                IsOpenId = initialData.IsOpenId,
+                Subject = new ClaimsPrincipal(new ClaimsIdentity(new List<Claim> { new Claim("sub", "456") })),
+                RequestedScopes = initialData.RequestedScopes
+            };
+
+            // Perform updates in quick succession
+            await Task.WhenAll(
+                _store.UpdateByUserCodeAsync(userCode, update1),
+                _store.UpdateByUserCodeAsync(userCode, update2)
+            );
+
+            var finalData = await _store.FindByUserCodeAsync(userCode);
+            finalData.Should().NotBeNull();
+            finalData.IsAuthorized.Should().BeTrue();
+            // One of the updates should have succeeded
+            finalData.Subject.FindFirst("sub").Value.Should().BeOneOf("123", "456");
+        }
     }
 }

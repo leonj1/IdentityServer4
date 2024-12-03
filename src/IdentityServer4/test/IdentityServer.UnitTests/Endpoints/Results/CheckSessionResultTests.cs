@@ -78,7 +78,6 @@ namespace IdentityServer.UnitTests.Endpoints.Results
         [Theory]
         [InlineData("foobar")]
         [InlineData("morefoobar")]
-
         public async Task can_change_cached_cookiename(string cookieName)
         {
             _options.Authentication.CheckSessionCookieName = cookieName;
@@ -89,6 +88,33 @@ namespace IdentityServer.UnitTests.Endpoints.Results
                 var html = rdr.ReadToEnd();
                 html.Should().Contain($"<script id='cookie-name' type='application/json'>{cookieName}</script>");
             }
+        }
+
+        [Fact]
+        public async Task should_initialize_from_di_when_options_not_set()
+        {
+            _subject = new CheckSessionResult();
+            await _subject.ExecuteAsync(_context);
+
+            _context.Response.StatusCode.Should().Be(200);
+            _context.Response.ContentType.Should().StartWith("text/html");
+        }
+
+        [Fact] 
+        public async Task should_return_html_with_correct_mime_type()
+        {
+            await _subject.ExecuteAsync(_context);
+
+            _context.Response.ContentType.Should().Be("text/html; charset=UTF-8");
+        }
+
+        [Fact]
+        public async Task response_should_include_cache_headers() 
+        {
+            await _subject.ExecuteAsync(_context);
+
+            _context.Response.Headers["Cache-Control"].First().Should().Contain("no-store");
+            _context.Response.Headers["Pragma"].First().Should().Contain("no-cache");
         }
     }
 }

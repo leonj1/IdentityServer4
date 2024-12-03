@@ -147,5 +147,105 @@ namespace IdentityServer.UnitTests.Services.Default
             var consentRequest = new ConsentRequest(req, "bob");
             _mockConsentStore.Messages.First().Key.Should().Be(consentRequest.Id);
         }
+
+        [Fact]
+        public async Task GetAuthorizationContextAsync_should_return_null_for_invalid_returnUrl()
+        {
+            var context = await _subject.GetAuthorizationContextAsync("invalid");
+            context.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task GetErrorContextAsync_should_return_null_for_null_errorId()
+        {
+            var error = await _subject.GetErrorContextAsync(null);
+            error.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task GetErrorContextAsync_should_return_error_for_valid_errorId()
+        {
+            var expectedError = new ErrorMessage { Error = "error" };
+            _mockErrorMessageStore.Messages.Add("123", new Message<ErrorMessage>(expectedError));
+
+            var error = await _subject.GetErrorContextAsync("123");
+            
+            error.Should().NotBeNull();
+            error.Error.Should().Be("error");
+        }
+
+        [Fact]
+        public void IsValidReturnUrl_should_return_false_for_invalid_url()
+        {
+            var result = _subject.IsValidReturnUrl("invalid");
+            result.Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task RevokeUserConsentAsync_should_remove_grants_for_client()
+        {
+            _mockUserSession.User = new IdentityServerUser("bob").CreatePrincipal();
+            
+            await _subject.RevokeUserConsentAsync("client1");
+
+            _mockPersistedGrantService.RemoveAllGrantsRequests.Should()
+                .Contain(x => x.clientId == "client1" && x.subjectId == "bob");
+        }
+
+        [Fact]
+        public async Task GetAllUserGrantsAsync_should_return_empty_when_no_user()
+        {
+            _mockUserSession.User = null;
+
+            var grants = await _subject.GetAllUserGrantsAsync();
+
+            grants.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task GetAuthorizationContextAsync_should_return_context_for_valid_returnUrl()
+        {
+            var request = new AuthorizationRequest { ClientId = "client1" };
+            _mockReturnUrlParser.Result = request;
+
+            var context = await _subject.GetAuthorizationContextAsync("valid");
+
+            context.Should().NotBeNull();
+            context.ClientId.Should().Be("client1");
+        }
+
+        [Fact]
+        public async Task CreateLogoutContextAsync_with_session_should_include_client_list()
+        {
+            _mockUserSession.Clients.Add("client1");
+            _mockUserSession.Clients.Add("client2");
+            _mockUserSession.User = new IdentityServerUser("123").CreatePrincipal();
+            _mockUserSession.SessionId = "session";
+
+            var context = await _subject.CreateLogoutContextAsync();
+
+            context.Should().NotBeNull();
+            var message = _mockLogoutMessageStore.Messages.First().Value;
+            message.Data.ClientIds.Should().Contain("client1");
+            message.Data.ClientIds.Should().Contain("client2");
+        }
+
+        [Fact]
+        public async Task RevokeUserConsentAsync_should_throw_when_no_user()
+        {
+            _mockUserSession.User = null;
+
+            Func<Task> act = () => _subject.RevokeUserConsentAsync("client1");
+
+            await act.Should().ThrowAsync<ArgumentNullException>();
+        }
+
+        [Fact]
+        public void IsValidReturnUrl_should_return_true_for_valid_local_url()
+        {
+            _options.UserInteraction.AllowOriginInReturnUrl = true;
+            var result = _subject.IsValidReturnUrl("/valid/local/url");
+            result.Should().BeTrue();
+        }
     }
 }

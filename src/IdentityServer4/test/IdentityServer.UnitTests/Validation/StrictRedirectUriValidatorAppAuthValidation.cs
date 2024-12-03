@@ -73,5 +73,44 @@ namespace IdentityServer.UnitTests.Validation
 
             result.Should().BeFalse();
         }
+
+        [Fact]
+        [Trait("Category", Category)]
+        public async Task Client_With_No_RedirectUris_Should_Fail()
+        {
+            var validator = new StrictRedirectUriValidatorAppAuth(TestLogger.Create<StrictRedirectUriValidatorAppAuth>());
+
+            var result = await validator.IsRedirectUriValidAsync("http://127.0.0.1:8080", clientWithNoRedirectUris);
+
+            result.Should().BeFalse();
+        }
+
+        [Theory]
+        [Trait("Category", Category)]
+        [InlineData("http://localhost")]
+        [InlineData("http://localhost:8080")]
+        [InlineData("http://localhost:8080/callback")]
+        public async Task Localhost_URIs_Should_Not_Be_Allowed(string requestedUri)
+        {
+            var validator = new StrictRedirectUriValidatorAppAuth(TestLogger.Create<StrictRedirectUriValidatorAppAuth>());
+
+            var result = await validator.IsRedirectUriValidAsync(requestedUri, clientWithValidLoopbackRedirectUri);
+
+            result.Should().BeFalse();
+        }
+
+        [Theory]
+        [Trait("Category", Category)]
+        [InlineData("http://127.0.0.1:65536")] // Port too high
+        [InlineData("http://127.0.0.1:-1")] // Negative port
+        [InlineData("http://127.0.0.1:99999")] // Invalid port
+        public async Task Invalid_Port_Numbers_Should_Not_Be_Allowed(string requestedUri)
+        {
+            var validator = new StrictRedirectUriValidatorAppAuth(TestLogger.Create<StrictRedirectUriValidatorAppAuth>());
+
+            var result = await validator.IsRedirectUriValidAsync(requestedUri, clientWithValidLoopbackRedirectUri);
+
+            result.Should().BeFalse();
+        }
     }
 }
