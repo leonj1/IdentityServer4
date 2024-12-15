@@ -1,4 +1,4 @@
-﻿using Clients;
+using Clients;
 using IdentityModel.Client;
 using Newtonsoft.Json.Linq;
 using System;
@@ -19,7 +19,10 @@ namespace ConsoleResourceOwnerFlowReference
             Console.ReadLine();
             await CallServiceAsync(response.AccessToken);
         }
+    }
 
+    public class TokenHandler
+    {
         static async Task<TokenResponse> RequestTokenAsync()
         {
             var client = new HttpClient();

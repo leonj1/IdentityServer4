@@ -1,7 +1,3 @@
-﻿// Copyright (c) Brock Allen & Dominick Baier. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See LICENSE in the project root for license information.
-
-
 using IdentityServer4.Extensions;
 using IdentityServer4.Validation;
 using static IdentityServer4.Constants;
@@ -49,20 +45,21 @@ namespace IdentityServer4.Events
         public TokenIssuedFailureEvent(TokenRequestValidationResult result)
             : this()
         {
-            if (result.ValidatedRequest != null)
+            if (result != null)
             {
-                ClientId = result.ValidatedRequest.Client.ClientId;
-                ClientName = result.ValidatedRequest.Client.ClientName;
-                GrantType = result.ValidatedRequest.GrantType;
-                Scopes = result.ValidatedRequest.RequestedScopes?.ToSpaceSeparatedString();
+                ClientId = result.Client.ClientId;
+                ClientName = result.Client.ClientName;
+                RedirectUri = result.RedirectUri;
+                Scopes = string.Join(" ", result.ValidatedResources.RawScopeValues);
+                GrantType = result.GrantType;
 
-                if (result.ValidatedRequest.Subject != null && result.ValidatedRequest.Subject.Identity.IsAuthenticated)
+                if (result.Subject != null && result.Subject.Identity.IsAuthenticated)
                 {
-                    SubjectId = result.ValidatedRequest.Subject.GetSubjectId();
+                    SubjectId = result.Subject?.GetSubjectId();
                 }
             }
 
-            Endpoint = EndpointNames.Token;
+            Endpoint = EndpointNames.Authorize;
             Error = result.Error;
             ErrorDescription = result.ErrorDescription;
         }
@@ -70,11 +67,7 @@ namespace IdentityServer4.Events
         /// <summary>
         /// Initializes a new instance of the <see cref="TokenIssuedFailureEvent"/> class.
         /// </summary>
-        protected TokenIssuedFailureEvent()
-            : base(EventCategories.Token,
-                  "Token Issued Failure",
-                  EventTypes.Failure,
-                  EventIds.TokenIssuedFailure)
+        public TokenIssuedFailureEvent()
         {
         }
 
@@ -87,10 +80,10 @@ namespace IdentityServer4.Events
         public string ClientId { get; set; }
 
         /// <summary>
-        /// Gets or sets the name of the client.
+        /// Gets or sets the client name.
         /// </summary>
         /// <value>
-        /// The name of the client.
+        /// The client name.
         /// </value>
         public string ClientName { get; set; }
 

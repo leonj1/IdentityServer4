@@ -46,81 +46,17 @@ namespace IdentityServer4
 
         private Message<TModel> Unprotect(string data)
         {
-            var json = _protector.Unprotect(data);
-            var message = ObjectSerializer.FromString<Message<TModel>>(json);
-            return message;
-        }
-
-        private string CookiePrefix => MessageType + ".";
-
-        private string GetCookieFullName(string id)
-        {
-            return CookiePrefix + id;
-        }
-
-        private string CookiePath => _context.HttpContext.GetIdentityServerBasePath().CleanUrlPath();
-
-        private IEnumerable<string> GetCookieNames()
-        {
-            var key = CookiePrefix;
-            foreach ((string name, var _) in _context.HttpContext.Request.Cookies)
+            try
             {
-                if (name.StartsWith(key))
-                {
-                    yield return name;
-                }
+                var json = _protector.Unprotect(data);
+                return ObjectSerializer.FromJson<Message<TModel>>(json);
             }
-        }
-
-        private bool Secure => _context.HttpContext.Request.IsHttps;
-
-        public void Write(string id, Message<TModel> message)
-        {
-            ClearOverflow();
-
-            if (message == null) throw new ArgumentNullException(nameof(message));
-
-            var name = GetCookieFullName(id);
-            var data = Protect(message);
-
-            _context.HttpContext.Response.Cookies.Append(
-                name,
-                data,
-                new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = Secure,
-                    Path = CookiePath,
-                    IsEssential = true
-                    // don't need to set same-site since cookie is expected to be sent
-                    // to only another page in this host. 
-                });
-        }
-
-        public Message<TModel> Read(string id)
-        {
-            if (id.IsMissing()) return null;
-
-            var name = GetCookieFullName(id);
-            return ReadByCookieName(name);
-        }
-
-        private Message<TModel> ReadByCookieName(string name)
-        {
-            var data = _context.HttpContext.Request.Cookies[name];
-            if (data.IsPresent())
+            catch (Exception ex)
             {
-                try
-                {
-                    return Unprotect(data);
-                }
-                catch(Exception ex)
-                {
-                    _logger.LogError(ex, "Error unprotecting message cookie");
-                    ClearByCookieName(name);
-                }
+                _logger.LogError(ex, "Error unprotecting message cookie");
+                ClearByCookieName(name);
+                return null;
             }
-            return null;
         }
 
         protected internal void Clear(string id)
@@ -187,6 +123,31 @@ namespace IdentityServer4
                     ClearByCookieName(name);
                 }
             }
+        }
+
+        private string GetCookieFullName(string id)
+        {
+            return $"{_options.UserInteraction.CookieMessagePrefix}_{id}";
+        }
+
+        private bool Secure => _context.HttpContext.Request.IsHttps;
+
+        private string CookiePath => _options.UserInteraction.CookieMessagePath ?? "/";
+
+        private IEnumerable<string> GetCookieNames()
+        {
+            return _context.HttpContext.Request.Cookies.Keys
+                .Where(k => k.StartsWith(_options.UserInteraction.CookieMessagePrefix));
+        }
+
+        private Message<TModel> ReadByCookieName(string name)
+        {
+            var data = _context.HttpContext.Request.Cookies[name];
+            if (data == null)
+            {
+                return null;
+            }
+            return Unprotect(data);
         }
     }
 }

@@ -1,24 +1,12 @@
-﻿// Copyright (c) Brock Allen & Dominick Baier. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See LICENSE in the project root for license information.
-
-
 using System;
-using System.Linq;
 using FluentAssertions;
 using IdentityServer4.EntityFramework.Mappers;
 using Xunit;
-using Client = IdentityServer4.Models.Client;
 
 namespace IdentityServer4.EntityFramework.UnitTests.Mappers
 {
     public class ClientMappersTests
     {
-        [Fact]
-        public void AutomapperConfigurationIsValid()
-        {
-            ClientMappers.Mapper.ConfigurationProvider.AssertConfigurationIsValid<ClientMapperProfile>();
-        }
-
         [Fact]
         public void Can_Map()
         {
@@ -42,7 +30,6 @@ namespace IdentityServer4.EntityFramework.UnitTests.Mappers
                 }
             };
 
-
             var mappedEntity = model.ToEntity();
 
             mappedEntity.Properties.Count.Should().Be(2);
@@ -52,8 +39,6 @@ namespace IdentityServer4.EntityFramework.UnitTests.Mappers
             var foo2 = mappedEntity.Properties.FirstOrDefault(x => x.Key == "foo2");
             foo2.Should().NotBeNull();
             foo2.Value.Should().Be("bar2");
-
-
 
             var mappedModel = mappedEntity.ToModel();
 

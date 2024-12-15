@@ -7,8 +7,6 @@ using IdentityServer4.Models;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Collections.Generic;
-using System;
 
 namespace IdentityServer4.Stores
 {
@@ -22,9 +20,7 @@ namespace IdentityServer4.Stores
         /// <inheritdoc/>
         public Task StoreAsync(PersistedGrant grant)
         {
-            _repository[grant.Key] = grant;
-
-            return Task.CompletedTask;
+            return PersistedGrantStorage.StoreAsync(grant);
         }
 
         /// <inheritdoc/>

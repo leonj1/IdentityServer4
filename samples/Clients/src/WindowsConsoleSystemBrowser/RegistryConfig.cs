@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using System.Reflection;
 using Microsoft.Win32;
 
 namespace WindowsConsoleSystemBrowser
 {
-    class RegistryConfig
+    public class RegistryConfig
     {
         public RegistryConfig(string uriScheme)
         {

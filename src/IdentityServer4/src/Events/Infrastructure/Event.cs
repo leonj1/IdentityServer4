@@ -75,20 +75,12 @@ namespace IdentityServer4.Events
         public int Id { get; set; }
 
         /// <summary>
-        /// Gets or sets the event message.
+        /// Gets or sets the message.
         /// </summary>
         /// <value>
         /// The message.
         /// </value>
         public string Message { get; set; }
-
-        /// <summary>
-        /// Gets or sets the per-request activity identifier.
-        /// </summary>
-        /// <value>
-        /// The activity identifier.
-        /// </value>
-        public string ActivityId { get; set; }
 
         /// <summary>
         /// Gets or sets the time stamp when the event was raised.

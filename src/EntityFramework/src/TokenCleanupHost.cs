@@ -1,7 +1,3 @@
-﻿// Copyright (c) Brock Allen & Dominick Baier. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See LICENSE in the project root for license information.
-
-
 using IdentityServer4.EntityFramework.Options;
 using IdentityServer4.EntityFramework;
 using Microsoft.Extensions.Hosting;
@@ -10,7 +6,7 @@ using System.Threading.Tasks;
 using System;
 using Microsoft.Extensions.Logging;
 
-namespace Microsoft.Extensions.DependencyInjection
+namespace IdentityServer4.Services
 {
     /// <summary>
     /// Helper to cleanup expired persisted grants.

@@ -1,4 +1,4 @@
-﻿using Clients;
+using Clients;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -15,6 +15,36 @@ namespace ResourceBasedApi
     public class Startup
     {
         public void ConfigureServices(IServiceCollection services)
+        {
+            ServiceConfiguration.ConfigureServices(services);
+        }
+
+        public void Configure(IApplicationBuilder app)
+        {
+            app.UseCors(policy =>
+            {
+                policy.WithOrigins(
+                    "https://localhost:44300");
+
+                policy.AllowAnyHeader();
+                policy.AllowAnyMethod();
+                policy.WithExposedHeaders("WWW-Authenticate");
+            });
+
+            app.UseRouting();
+            app.UseAuthentication();
+            app.UseAuthorization();
+
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapControllers().RequireAuthorization();
+            });
+        }
+    }
+
+    public static class ServiceConfiguration
+    {
+        public static void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
 
@@ -45,28 +75,6 @@ namespace ResourceBasedApi
                 });
 
             services.AddScopeTransformation();
-        }
-
-        public void Configure(IApplicationBuilder app)
-        {
-            app.UseCors(policy =>
-            {
-                policy.WithOrigins(
-                    "https://localhost:44300");
-
-                policy.AllowAnyHeader();
-                policy.AllowAnyMethod();
-                policy.WithExposedHeaders("WWW-Authenticate");
-            });
-
-            app.UseRouting();
-            app.UseAuthentication();
-            app.UseAuthorization();
-
-            app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapControllers().RequireAuthorization();
-            });
         }
     }
 }

@@ -38,28 +38,22 @@ namespace IdentityServer4.Stores
         /// Initializes a new instance of the <see cref="CachingResourceStore{T}"/> class.
         /// </summary>
         /// <param name="options">The options.</param>
-        /// <param name="inner">The inner.</param>
         /// <param name="identityCache">The identity cache.</param>
         /// <param name="apiByScopeCache">The API by scope cache.</param>
-        /// <param name="apisCache">The API cache.</param>
-        /// <param name="scopeCache"></param>
-        /// <param name="allCache">All cache.</param>
+        /// <param name="apiScopeCache">The API scope cache.</param>
+        /// <param name="apiResourceCache">The API resource cache.</param>
+        /// <param name="allCache">The all cache.</param>
+        /// <param name="inner">The inner.</param>
         /// <param name="logger">The logger.</param>
-        public CachingResourceStore(IdentityServerOptions options, T inner, 
-            ICache<IEnumerable<IdentityResource>> identityCache, 
-            ICache<IEnumerable<ApiResource>> apiByScopeCache,
-            ICache<IEnumerable<ApiResource>> apisCache,
-            ICache<IEnumerable<ApiScope>> scopeCache,
-            ICache<Resources> allCache,
-            ILogger<CachingResourceStore<T>> logger)
+        public CachingResourceStore(IdentityServerOptions options, ICache<IEnumerable<IdentityResource>> identityCache, ICache<IEnumerable<ApiResource>> apiByScopeCache, ICache<IEnumerable<ApiScope>> apiScopeCache, ICache<IEnumerable<ApiResource>> apiResourceCache, ICache<Resources> allCache, T inner, ILogger<CachingResourceStore<T>> logger)
         {
             _options = options;
-            _inner = inner;
             _identityCache = identityCache;
             _apiByScopeCache = apiByScopeCache;
-            _apiResourceCache = apisCache;
-            _apiScopeCache = scopeCache;
+            _apiScopeCache = apiScopeCache;
+            _apiResourceCache = apiResourceCache;
             _allCache = allCache;
+            _inner = inner;
             _logger = logger;
         }
 

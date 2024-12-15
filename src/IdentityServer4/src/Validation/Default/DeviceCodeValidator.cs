@@ -51,31 +51,9 @@ namespace IdentityServer4.Validation
         /// </summary>
         /// <param name="context">The context.</param>
         /// <returns></returns>
-        public async Task ValidateAsync(DeviceCodeValidationContext context)
+        public async Task ValidateAsync(TokenRequestValidationContext context)
         {
-            var deviceCode = await _devices.FindByDeviceCodeAsync(context.DeviceCode);
-
-            if (deviceCode == null)
-            {
-                _logger.LogError("Invalid device code");
-                context.Result = new TokenRequestValidationResult(context.Request, OidcConstants.TokenErrors.InvalidGrant);
-                return;
-            }
-            
-            // validate client binding
-            if (deviceCode.ClientId != context.Request.Client.ClientId)
-            {
-                _logger.LogError("Client {0} is trying to use a device code from client {1}", context.Request.Client.ClientId, deviceCode.ClientId);
-                context.Result = new TokenRequestValidationResult(context.Request, OidcConstants.TokenErrors.InvalidGrant);
-                return;
-            }
-
-            if (await _throttlingService.ShouldSlowDown(context.DeviceCode, deviceCode))
-            {
-                _logger.LogError("Client {0} is polling too fast", deviceCode.ClientId);
-                context.Result = new TokenRequestValidationResult(context.Request, OidcConstants.TokenErrors.SlowDown);
-                return;
-            }
+            var deviceCode = context.DeviceCode;
 
             // validate lifetime
             if (deviceCode.CreationTime.AddSeconds(deviceCode.Lifetime) < _systemClock.UtcNow)
@@ -90,13 +68,6 @@ namespace IdentityServer4.Validation
                 && (deviceCode.AuthorizedScopes == null || deviceCode.AuthorizedScopes.Any() == false))
             {
                 _logger.LogError("No scopes authorized for device authorization. Access denied");
-                context.Result = new TokenRequestValidationResult(context.Request, OidcConstants.TokenErrors.AccessDenied);
-                return;
-            }
-
-            // make sure code is authorized
-            if (!deviceCode.IsAuthorized || deviceCode.Subject == null)
-            {
                 context.Result = new TokenRequestValidationResult(context.Request, OidcConstants.TokenErrors.AuthorizationPending);
                 return;
             }

@@ -18,23 +18,6 @@ namespace IdentityServer4.Stores
         private readonly List<InMemoryDeviceAuthorization> _repository = new List<InMemoryDeviceAuthorization>();
 
         /// <summary>
-        /// Stores the device authorization request.
-        /// </summary>
-        /// <param name="deviceCode">The device code.</param>
-        /// <param name="userCode">The user code.</param>
-        /// <param name="data">The data.</param>
-        /// <returns></returns>
-        public Task StoreDeviceAuthorizationAsync(string deviceCode, string userCode, DeviceCode data)
-        {
-            lock (_repository)
-            {
-                _repository.Add(new InMemoryDeviceAuthorization(deviceCode, userCode, data));
-            }
-            
-            return Task.CompletedTask;
-        }
-
-        /// <summary>
         /// Finds device authorization by user code.
         /// </summary>
         /// <param name="userCode">The user code.</param>
@@ -67,26 +50,6 @@ namespace IdentityServer4.Stores
         }
 
         /// <summary>
-        /// Updates device authorization, searching by user code.
-        /// </summary>
-        /// <param name="userCode">The user code.</param>
-        /// <param name="data">The data.</param>
-        public Task UpdateByUserCodeAsync(string userCode, DeviceCode data)
-        {
-            lock (_repository)
-            {
-                var foundData = _repository.FirstOrDefault(x => x.UserCode == userCode);
-
-                if (foundData != null)
-                {
-                    foundData.Data = data;
-                }
-            }
-
-            return Task.CompletedTask;
-        }
-
-        /// <summary>
         /// Removes the device authorization, searching by device code.
         /// </summary>
         /// <param name="deviceCode">The device code.</param>
@@ -102,7 +65,6 @@ namespace IdentityServer4.Stores
                     _repository.Remove(foundData);
                 }
             }
-
 
             return Task.CompletedTask;
         }

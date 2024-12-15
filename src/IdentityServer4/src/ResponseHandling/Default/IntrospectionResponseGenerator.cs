@@ -68,27 +68,22 @@ namespace IdentityServer4.ResponseHandling
                 return response;
             }
 
-            // expected scope not present
-            if (await AreExpectedScopesPresentAsync(validationResult) == false)
+            // Check if the API resource is allowed to introspect the scopes.
+            if (!await AreExpectedScopesPresentAsync(validationResult))
             {
                 return response;
             }
 
-            Logger.LogDebug("Creating introspection response for active token.");
+            // At least one of the scopes the API supports is in the token
+            var tokenScopesThatMatchApi = validationResult.Claims.Where(c => c.Type == JwtClaimTypes.Scope).Where(c => validationResult.Api.Scopes.Contains(c.Value));
 
-            // get all claims (without scopes)
-            response = validationResult.Claims.Where(c => c.Type != JwtClaimTypes.Scope).ToClaimsDictionary();
-
-            // add active flag
-            response.Add("active", true);
-
-            // calculate scopes the caller is allowed to see
-            var allowedScopes = validationResult.Api.Scopes;
-            var scopes = validationResult.Claims.Where(c => c.Type == JwtClaimTypes.Scope).Select(x => x.Value);
-            scopes = scopes.Where(x => allowedScopes.Contains(x));
-            response.Add("scope", scopes.ToSpaceSeparatedString());
+            if (tokenScopesThatMatchApi.Any())
+            {
+                response.Add("scope", string.Join(" ", tokenScopesThatMatchApi.Select(s => s.Value)));
+            }
 
             await Events.RaiseAsync(new TokenIntrospectionSuccessEvent(validationResult));
+
             return response;
         }
 
@@ -99,26 +94,19 @@ namespace IdentityServer4.ResponseHandling
         /// <returns></returns>
         protected virtual async Task<bool> AreExpectedScopesPresentAsync(IntrospectionRequestValidationResult validationResult)
         {
-            var apiScopes = validationResult.Api.Scopes;
-            var tokenScopes = validationResult.Claims.Where(c => c.Type == JwtClaimTypes.Scope);
-
-            var tokenScopesThatMatchApi = tokenScopes.Where(c => apiScopes.Contains(c.Value));
-
-            var result = false;
+            var tokenScopesThatMatchApi = validationResult.Claims.Where(c => c.Type == JwtClaimTypes.Scope).Where(c => validationResult.Api.Scopes.Contains(c.Value));
 
             if (tokenScopesThatMatchApi.Any())
             {
                 // at least one of the scopes the API supports is in the token
-                result = true;
-            }
-            else
-            {
-                // no scopes for this API are found in the token
-                Logger.LogError("Expected scope {scopes} is missing in token", apiScopes);
-                await Events.RaiseAsync(new TokenIntrospectionFailureEvent(validationResult.Api.Name, "Expected scopes are missing", validationResult.Token, apiScopes, tokenScopes.Select(s => s.Value)));
+                return true;
             }
 
-            return result;
+            // no scopes for this API are found in the token
+            Logger.LogError("Expected scope {scopes} is missing in token", validationResult.Api.Scopes);
+            await Events.RaiseAsync(new TokenIntrospectionFailureEvent(validationResult.Api.Name, "Expected scopes are missing", validationResult.Token, validationResult.Api.Scopes, tokenScopesThatMatchApi.Select(s => s.Value)));
+
+            return false;
         }
     }
 }

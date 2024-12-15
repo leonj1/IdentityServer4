@@ -13,13 +13,13 @@ using Xunit;
 
 namespace IdentityServer.IntegrationTests.Clients
 {
-    public class ClientCredentialsandResourceOwnerClient
+    public class ClientCredentialsAndResourceOwnerClient
     {
         private const string TokenEndpoint = "https://server/connect/token";
 
         private readonly HttpClient _client;
 
-        public ClientCredentialsandResourceOwnerClient()
+        public ClientCredentialsAndResourceOwnerClient()
         {
             var builder = new WebHostBuilder()
                 .UseStartup<Startup>();

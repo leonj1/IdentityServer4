@@ -1,7 +1,3 @@
-﻿// Copyright (c) Brock Allen & Dominick Baier. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See LICENSE in the project root for license information.
-
-
 using FluentAssertions;
 using IdentityModel;
 using IdentityServer.UnitTests.Validation.Setup;
@@ -18,7 +14,7 @@ namespace IdentityServer.UnitTests.Validation
     public class UserInfoRequestValidation
     {
         private const string Category = "UserInfo Request Validation Tests";
-        private IClientStore _clients = new InMemoryClientStore(TestClients.Get());
+        private IClientStore _clients = new InMemoryClientStore();
 
         [Fact]
         [Trait("Category", Category)]

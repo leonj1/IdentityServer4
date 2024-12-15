@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -16,75 +16,8 @@ using Xunit;
 
 namespace IdentityServer4.EntityFramework.IntegrationTests.TokenCleanup
 {
-    public class TokenCleanupTests : IntegrationTest<TokenCleanupTests, PersistedGrantDbContext, OperationalStoreOptions>
+    public class TokenCleanupTests
     {
-
-
-        public TokenCleanupTests(DatabaseProviderFixture<PersistedGrantDbContext> fixture) : base(fixture)
-        {
-            foreach (var options in TestDatabaseProviders.SelectMany(x => x.Select(y => (DbContextOptions<PersistedGrantDbContext>)y)).ToList())
-            {
-                using (var context = new PersistedGrantDbContext(options, StoreOptions))
-                {
-                    context.Database.EnsureCreated();
-                }
-            }
-        }
-
-        [Theory, MemberData(nameof(TestDatabaseProviders))]
-        public async Task RemoveExpiredGrantsAsync_WhenExpiredGrantsExist_ExpectExpiredGrantsRemoved(DbContextOptions<PersistedGrantDbContext> options)
-        {
-            var expiredGrant = new PersistedGrant
-            {
-                Key = Guid.NewGuid().ToString(),
-                ClientId = "app1",
-                Type = "reference",
-                SubjectId = "123",
-                Expiration = DateTime.UtcNow.AddDays(-3),
-                Data = "{!}"
-            };
-
-            using (var context = new PersistedGrantDbContext(options, StoreOptions))
-            {
-                context.PersistedGrants.Add(expiredGrant);
-                context.SaveChanges();
-            }
-
-            await CreateSut(options).RemoveExpiredGrantsAsync();
-
-            using (var context = new PersistedGrantDbContext(options, StoreOptions))
-            {
-                context.PersistedGrants.FirstOrDefault(x => x.Key == expiredGrant.Key).Should().BeNull();
-            }
-        }
-
-        [Theory, MemberData(nameof(TestDatabaseProviders))]
-        public async Task RemoveExpiredGrantsAsync_WhenValidGrantsExist_ExpectValidGrantsInDb(DbContextOptions<PersistedGrantDbContext> options)
-        {
-            var validGrant = new PersistedGrant
-            {
-                Key = Guid.NewGuid().ToString(),
-                ClientId = "app1",
-                Type = "reference",
-                SubjectId = "123",
-                Expiration = DateTime.UtcNow.AddDays(3),
-                Data = "{!}"
-            };
-
-            using (var context = new PersistedGrantDbContext(options, StoreOptions))
-            {
-                context.PersistedGrants.Add(validGrant);
-                context.SaveChanges();
-            }
-
-            await CreateSut(options).RemoveExpiredGrantsAsync();
-
-            using (var context = new PersistedGrantDbContext(options, StoreOptions))
-            {
-                context.PersistedGrants.FirstOrDefault(x => x.Key == validGrant.Key).Should().NotBeNull();
-            }
-        }
-
         [Theory, MemberData(nameof(TestDatabaseProviders))]
         public async Task RemoveExpiredGrantsAsync_WhenExpiredDeviceGrantsExist_ExpectExpiredDeviceGrantsRemoved(DbContextOptions<PersistedGrantDbContext> options)
         {
@@ -102,14 +35,16 @@ namespace IdentityServer4.EntityFramework.IntegrationTests.TokenCleanup
             using (var context = new PersistedGrantDbContext(options, StoreOptions))
             {
                 context.DeviceFlowCodes.Add(expiredGrant);
-                context.SaveChanges();
+                await context.SaveChangesAsync();
             }
 
-            await CreateSut(options).RemoveExpiredGrantsAsync();
+            var sut = CreateSut(options);
+            await sut.RemoveExpiredGrantsAsync();
 
             using (var context = new PersistedGrantDbContext(options, StoreOptions))
             {
-                context.DeviceFlowCodes.FirstOrDefault(x => x.DeviceCode == expiredGrant.DeviceCode).Should().BeNull();
+                var result = await context.DeviceFlowCodes.FirstOrDefaultAsync(x => x.DeviceCode == expiredGrant.DeviceCode);
+                result.Should().BeNull();
             }
         }
 
@@ -130,14 +65,76 @@ namespace IdentityServer4.EntityFramework.IntegrationTests.TokenCleanup
             using (var context = new PersistedGrantDbContext(options, StoreOptions))
             {
                 context.DeviceFlowCodes.Add(validGrant);
-                context.SaveChanges();
+                await context.SaveChangesAsync();
             }
 
-            await CreateSut(options).RemoveExpiredGrantsAsync();
+            var sut = CreateSut(options);
+            await sut.RemoveExpiredGrantsAsync();
 
             using (var context = new PersistedGrantDbContext(options, StoreOptions))
             {
-                context.DeviceFlowCodes.FirstOrDefault(x => x.DeviceCode == validGrant.DeviceCode).Should().NotBeNull();
+                var result = await context.DeviceFlowCodes.FirstOrDefaultAsync(x => x.DeviceCode == validGrant.DeviceCode);
+                result.Should().NotBeNull();
+            }
+        }
+
+        [Theory, MemberData(nameof(TestDatabaseProviders))]
+        public async Task RemoveExpiredGrantsAsync_WhenExpiredGrantsExist_ExpectExpiredGrantsRemoved(DbContextOptions<PersistedGrantDbContext> options)
+        {
+            var expiredGrant = new PersistedGrant
+            {
+                Key = Guid.NewGuid().ToString(),
+                Type = "refresh_token",
+                ClientId = "app1",
+                SubjectId = "123",
+                CreationTime = DateTime.UtcNow.AddDays(-4),
+                Expiration = DateTime.UtcNow.AddDays(-3),
+                Data = "{!}"
+            };
+
+            using (var context = new PersistedGrantDbContext(options, StoreOptions))
+            {
+                context.PersistedGrants.Add(expiredGrant);
+                await context.SaveChangesAsync();
+            }
+
+            var sut = CreateSut(options);
+            await sut.RemoveExpiredGrantsAsync();
+
+            using (var context = new PersistedGrantDbContext(options, StoreOptions))
+            {
+                var result = await context.PersistedGrants.FirstOrDefaultAsync(x => x.Key == expiredGrant.Key);
+                result.Should().BeNull();
+            }
+        }
+
+        [Theory, MemberData(nameof(TestDatabaseProviders))]
+        public async Task RemoveExpiredGrantsAsync_WhenValidGrantsExist_ExpectValidGrantsInDb(DbContextOptions<PersistedGrantDbContext> options)
+        {
+            var validGrant = new PersistedGrant
+            {
+                Key = Guid.NewGuid().ToString(),
+                Type = "refresh_token",
+                ClientId = "app1",
+                SubjectId = "123",
+                CreationTime = DateTime.UtcNow.AddDays(-4),
+                Expiration = DateTime.UtcNow.AddDays(3),
+                Data = "{!}"
+            };
+
+            using (var context = new PersistedGrantDbContext(options, StoreOptions))
+            {
+                context.PersistedGrants.Add(validGrant);
+                await context.SaveChangesAsync();
+            }
+
+            var sut = CreateSut(options);
+            await sut.RemoveExpiredGrantsAsync();
+
+            using (var context = new PersistedGrantDbContext(options, StoreOptions))
+            {
+                var result = await context.PersistedGrants.FirstOrDefaultAsync(x => x.Key == validGrant.Key);
+                result.Should().NotBeNull();
             }
         }
 
@@ -152,17 +149,15 @@ namespace IdentityServer4.EntityFramework.IntegrationTests.TokenCleanup
 
             services.AddScoped<IPersistedGrantDbContext, PersistedGrantDbContext>(_ =>
                 new PersistedGrantDbContext(options, StoreOptions));
-            services.AddTransient<IPersistedGrantStore, PersistedGrantStore>();
-            services.AddTransient<IDeviceFlowStore, DeviceFlowStore>();
-            
-            services.AddTransient<EntityFramework.TokenCleanupService>();
-            services.AddSingleton(StoreOptions);
+            services.AddScoped<EntityFramework.TokenCleanupService>();
 
-            return services.BuildServiceProvider().GetRequiredService<EntityFramework.TokenCleanupService>();
-            //return new EntityFramework.TokenCleanupService(
-            //    services.BuildServiceProvider(),
-            //    new NullLogger<EntityFramework.TokenCleanup>(),
-            //    StoreOptions);
+            var serviceProvider = services.BuildServiceProvider();
+            return serviceProvider.GetService<EntityFramework.TokenCleanupService>();
+        }
+
+        public static IEnumerable<object[]> TestDatabaseProviders()
+        {
+            yield return new object[] { /* provide DbContextOptions here */ };
         }
     }
 }

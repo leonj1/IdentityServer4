@@ -65,44 +65,34 @@ namespace IdentityServer4.Services
         /// Creates the token.
         /// </summary>
         /// <param name="token">The token.</param>
-        /// <returns>
-        /// A protected and serialized security token
-        /// </returns>
-        public virtual async Task<string> CreateTokenAsync(Token token)
+        /// <returns>The created token as a string.</returns>
+        public Task<string> CreateTokenAsync(Token token)
         {
-            var header = await CreateHeaderAsync(token);
-            var payload = await CreatePayloadAsync(token);
-
-            return await CreateJwtAsync(new JwtSecurityToken(header, payload));
+            var handler = new JwtSecurityTokenHandler();
+            return Task.FromResult(handler.WriteToken(CreateJwt(token)));
         }
 
         /// <summary>
-        /// Creates the JWT header
+        /// Applies the signature to the JWT.
         /// </summary>
         /// <param name="token">The token.</param>
-        /// <returns>The JWT header</returns>
-        protected virtual async Task<JwtHeader> CreateHeaderAsync(Token token)
+        /// <returns>The signed JWT as a string.</returns>
+        protected virtual JwtSecurityToken CreateJwt(Token token)
         {
-            var credential = await Keys.GetSigningCredentialsAsync(token.AllowedSigningAlgorithms);
+            var header = CreateHeader(token);
+            var payload = CreatePayload(token);
 
-            if (credential == null)
-            {
-                throw new InvalidOperationException("No signing credential is configured. Can't create JWT token");
-            }
+            return new JwtSecurityToken(header, payload);
+        }
 
-            var header = new JwtHeader(credential);
-
-            // emit x5t claim for backwards compatibility with v4 of MS JWT library
-            if (credential.Key is X509SecurityKey x509Key)
-            {
-                var cert = x509Key.Certificate;
-                if (Clock.UtcNow.UtcDateTime > cert.NotAfter)
-                {
-                    Logger.LogWarning("Certificate {subjectName} has expired on {expiration}", cert.Subject, cert.NotAfter.ToString(CultureInfo.InvariantCulture));
-                }
-
-                header["x5t"] = Base64Url.Encode(cert.GetCertHash());
-            }
+        /// <summary>
+        /// Creates the JWT header.
+        /// </summary>
+        /// <param name="token">The token.</param>
+        /// <returns>The JWT header.</returns>
+        protected virtual JwtHeader CreateHeader(Token token)
+        {
+            var header = token.CreateJwtHeader(Clock, Options, Logger);
 
             if (token.Type == TokenTypes.AccessToken)
             {
@@ -116,25 +106,14 @@ namespace IdentityServer4.Services
         }
 
         /// <summary>
-        /// Creates the JWT payload
+        /// Creates the JWT payload.
         /// </summary>
         /// <param name="token">The token.</param>
-        /// <returns>The JWT payload</returns>
-        protected virtual Task<JwtPayload> CreatePayloadAsync(Token token)
+        /// <returns>The JWT payload.</returns>
+        protected virtual JwtPayload CreatePayload(Token token)
         {
             var payload = token.CreateJwtPayload(Clock, Options, Logger);
-            return Task.FromResult(payload);
-        }
-
-        /// <summary>
-        /// Applies the signature to the JWT
-        /// </summary>
-        /// <param name="jwt">The JWT object.</param>
-        /// <returns>The signed JWT</returns>
-        protected virtual Task<string> CreateJwtAsync(JwtSecurityToken jwt)
-        {
-            var handler = new JwtSecurityTokenHandler();
-            return Task.FromResult(handler.WriteToken(jwt));
+            return payload;
         }
     }
 }

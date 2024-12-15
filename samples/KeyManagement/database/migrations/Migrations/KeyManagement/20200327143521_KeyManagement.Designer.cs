@@ -21,6 +21,16 @@ namespace migrations.Migrations.KeyManagement
                 .HasAnnotation("Relational:MaxIdentifierLength", 128)
                 .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
+            var modelBuilderInstance = new ModelBuilder();
+            BuildTargetModel(modelBuilderInstance);
+#pragma warning restore 612, 618
+        }
+    }
+
+    public static class KeyManagementModelBuilderExtensions
+    {
+        public static void BuildTargetModel(this ModelBuilder modelBuilder)
+        {
             modelBuilder.Entity("IdentityServer4.KeyManagement.EntityFramework.DataProtectionKey", b =>
                 {
                     b.Property<int>("Id")
@@ -74,7 +84,6 @@ namespace migrations.Migrations.KeyManagement
 
                     b.ToTable("SigningKeys");
                 });
-#pragma warning restore 612, 618
         }
     }
 }

@@ -1,7 +1,3 @@
-﻿// Copyright (c) Brock Allen & Dominick Baier. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See LICENSE in the project root for license information.
-
-
 using IdentityModel;
 using IdentityServer4.Extensions;
 using IdentityServer4.Models;
@@ -16,7 +12,7 @@ namespace IdentityServer4.Validation
     /// The token revocation request validator
     /// </summary>
     /// <seealso cref="IdentityServer4.Validation.ITokenRevocationRequestValidator" />
-    internal class TokenRevocationRequestValidator : ITokenRevocationRequestValidator
+    public class TokenRevocationRequestValidator : ITokenRevocationRequestValidator
     {
         private readonly ILogger _logger;
 

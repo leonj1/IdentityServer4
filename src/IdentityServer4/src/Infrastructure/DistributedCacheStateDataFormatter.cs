@@ -67,40 +67,20 @@ namespace IdentityServer4.Infrastructure
             {
                 options.SetSlidingExpiration(Constants.DefaultCacheDuration);
             }
-            
-            // Rather than encrypt the full AuthenticationProperties
-            // cache the data and encrypt the key that points to the data
-            Cache.SetString(cacheKey, json, options);
 
-            return Protector.Protect(key);
+            Cache.SetString(cacheKey, json, options);
+            return key;
         }
 
         /// <summary>
-        /// Unprotects the specified protected text.
+        /// Unprotects the specified data.
         /// </summary>
         /// <param name="protectedText">The protected text.</param>
         /// <returns></returns>
         public AuthenticationProperties Unprotect(string protectedText)
         {
-            return Unprotect(protectedText, null);
-        }
-
-        /// <summary>
-        /// Unprotects the specified protected text.
-        /// </summary>
-        /// <param name="protectedText">The protected text.</param>
-        /// <param name="purpose">The purpose.</param>
-        /// <returns></returns>
-        public AuthenticationProperties Unprotect(string protectedText, string purpose)
-        {
-            if (String.IsNullOrWhiteSpace(protectedText))
-            {
-                return null;
-            }
-
-            // Decrypt the key and retrieve the data from the cache.
             var key = Protector.Unprotect(protectedText);
-            var cacheKey = $"{CacheKeyPrefix}-{_name}-{purpose}-{key}";
+            var cacheKey = $"{CacheKeyPrefix}-{_name}-{key}";
             var json = Cache.GetString(cacheKey);
 
             if (json == null)

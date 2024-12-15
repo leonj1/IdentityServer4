@@ -1,7 +1,3 @@
-﻿// Copyright (c) Brock Allen & Dominick Baier. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See LICENSE in the project root for license information.
-
-
 using System.Collections.Generic;
 using IdentityServer4.Models;
 
@@ -18,7 +14,7 @@ namespace IdentityServer.IntegrationTests.Endpoints.Introspection.Setup
                     Name = "api1",
                     ApiSecrets = new List<Secret>
                     {
-                        new Secret("secret".Sha256())
+                        Secret.Sha256("secret")
                     },
                     Scopes = { "api1" }
                 },
@@ -27,7 +23,7 @@ namespace IdentityServer.IntegrationTests.Endpoints.Introspection.Setup
                     Name = "api2",
                     ApiSecrets = new List<Secret>
                     {
-                        new Secret("secret".Sha256())
+                        Secret.Sha256("secret")
                     },
                     Scopes = { "api2" }
                 },
@@ -36,12 +32,13 @@ namespace IdentityServer.IntegrationTests.Endpoints.Introspection.Setup
                     Name = "api3",
                     ApiSecrets = new List<Secret>
                     {
-                        new Secret("secret".Sha256())
+                        Secret.Sha256("secret")
                     },
                     Scopes = { "api3-a", "api3-b" }
                 }
             };
         }
+
         public static IEnumerable<ApiScope> GetScopes()
         {
             return new ApiScope[]

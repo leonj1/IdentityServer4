@@ -43,7 +43,7 @@ namespace IdentityServer4.ResponseHandling
         /// <summary>
         /// The logger
         /// </summary>
-        protected readonly ILogger Logger;
+        protected readonly ILogger<DeviceAuthorizationResponseGenerator> Logger;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DeviceAuthorizationResponseGenerator"/> class.
@@ -63,34 +63,22 @@ namespace IdentityServer4.ResponseHandling
         }
 
         /// <summary>
-        /// Processes the response.
+        /// Creates the response.
         /// </summary>
         /// <param name="validationResult">The validation result.</param>
-        /// <param name="baseUrl">The base URL.</param>
         /// <returns></returns>
-        /// <exception cref="ArgumentNullException">validationResult or Client</exception>
-        /// <exception cref="ArgumentException">Value cannot be null or whitespace. - baseUrl</exception>
-        public virtual async Task<DeviceAuthorizationResponse> ProcessAsync(DeviceAuthorizationRequestValidationResult validationResult, string baseUrl)
+        public async Task<DeviceAuthorizationResponse> CreateResponseAsync(ValidationResult validationResult)
         {
-            if (validationResult == null) throw new ArgumentNullException(nameof(validationResult));
-            if (validationResult.ValidatedRequest.Client == null) throw new ArgumentNullException(nameof(validationResult.ValidatedRequest.Client));
-            if (string.IsNullOrWhiteSpace(baseUrl)) throw new ArgumentException("Value cannot be null or whitespace.", nameof(baseUrl));
-
-            Logger.LogTrace("Creating response for device authorization request");
-
             var response = new DeviceAuthorizationResponse();
-            
-            // generate user_code
-            var userCodeGenerator = await UserCodeService.GetGenerator(
-                validationResult.ValidatedRequest.Client.UserCodeType ??
-                Options.DeviceFlow.DefaultUserCodeType);
-            
+
+            // generate user code
+            var userCodeGenerator = await UserCodeService.FindUserCodeGeneratorAsync(validationResult.ValidatedRequest.Client.UserCodeType ?? Options.DeviceFlow.DefaultUserCodeType);
             var retryCount = 0;
 
             while (retryCount < userCodeGenerator.RetryLimit)
             {
                 var userCode = await userCodeGenerator.GenerateAsync();
-                
+
                 var deviceCode = await DeviceFlowCodeService.FindByUserCodeAsync(userCode);
                 if (deviceCode == null)
                 {
@@ -111,9 +99,9 @@ namespace IdentityServer4.ResponseHandling
             if (response.VerificationUri.IsLocalUrl())
             {
                 // if url is relative, parse absolute URL
-                response.VerificationUri = baseUrl.RemoveTrailingSlash() + Options.UserInteraction.DeviceVerificationUrl;
+                response.VerificationUri = validationResult.ValidatedRequest.BaseUrl.RemoveTrailingSlash() + Options.UserInteraction.DeviceVerificationUrl;
             }
-            
+
             if (!string.IsNullOrWhiteSpace(Options.UserInteraction.DeviceVerificationUserCodeParameter))
             {
                 response.VerificationUriComplete =

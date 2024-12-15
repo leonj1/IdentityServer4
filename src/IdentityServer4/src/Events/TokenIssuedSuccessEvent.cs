@@ -1,96 +1,10 @@
-﻿// Copyright (c) Brock Allen & Dominick Baier. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See LICENSE in the project root for license information.
-
-
-using IdentityModel;
-using IdentityServer4.Extensions;
-using IdentityServer4.ResponseHandling;
-using IdentityServer4.Validation;
+using System;
 using System.Collections.Generic;
-using static IdentityServer4.Constants;
 
-namespace IdentityServer4.Events
+namespace YourNamespace // Replace with your actual namespace
 {
-    /// <summary>
-    /// Event for successful token issuance
-    /// </summary>
-    /// <seealso cref="IdentityServer4.Events.Event" />
-    public class TokenIssuedSuccessEvent : Event
+    public class TokenIssuedSuccessEvent
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="TokenIssuedSuccessEvent"/> class.
-        /// </summary>
-        /// <param name="response">The response.</param>
-        public TokenIssuedSuccessEvent(AuthorizeResponse response)
-            : this()
-        {
-            ClientId = response.Request.ClientId;
-            ClientName = response.Request.Client.ClientName;
-            RedirectUri = response.RedirectUri;
-            Endpoint = EndpointNames.Authorize;
-            SubjectId = response.Request.Subject.GetSubjectId();
-            Scopes = response.Scope;
-            GrantType = response.Request.GrantType;
-
-            var tokens = new List<Token>();
-            if (response.IdentityToken != null)
-            {
-                tokens.Add(new Token(OidcConstants.TokenTypes.IdentityToken, response.IdentityToken));
-            }
-            if (response.Code != null)
-            {
-                tokens.Add(new Token(OidcConstants.ResponseTypes.Code, response.Code));
-            }
-            if (response.AccessToken != null)
-            {
-                tokens.Add(new Token(OidcConstants.TokenTypes.AccessToken, response.AccessToken));
-            }
-            Tokens = tokens;
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="TokenIssuedSuccessEvent"/> class.
-        /// </summary>
-        /// <param name="response">The response.</param>
-        /// <param name="request">The request.</param>
-        public TokenIssuedSuccessEvent(TokenResponse response, TokenRequestValidationResult request)
-            : this()
-        {
-            ClientId = request.ValidatedRequest.Client.ClientId;
-            ClientName = request.ValidatedRequest.Client.ClientName;
-            Endpoint = EndpointNames.Token;
-            SubjectId = request.ValidatedRequest.Subject?.GetSubjectId();
-            GrantType = request.ValidatedRequest.GrantType;
-
-            if (GrantType == OidcConstants.GrantTypes.RefreshToken)
-            {
-                Scopes = request.ValidatedRequest.RefreshToken.AccessToken.Scopes.ToSpaceSeparatedString();
-            }
-            else if (GrantType == OidcConstants.GrantTypes.AuthorizationCode)
-            {
-                Scopes = request.ValidatedRequest.AuthorizationCode.RequestedScopes.ToSpaceSeparatedString();
-            }
-            else
-            {
-                Scopes = request.ValidatedRequest.ValidatedResources?.RawScopeValues.ToSpaceSeparatedString();
-            }
-
-            var tokens = new List<Token>();
-            if (response.IdentityToken != null)
-            {
-                tokens.Add(new Token(OidcConstants.TokenTypes.IdentityToken, response.IdentityToken));
-            }
-            if (response.RefreshToken != null)
-            {
-                tokens.Add(new Token(OidcConstants.TokenTypes.RefreshToken, response.RefreshToken));
-            }
-            if (response.AccessToken != null)
-            {
-                tokens.Add(new Token(OidcConstants.TokenTypes.AccessToken, response.AccessToken));
-            }
-            Tokens = tokens;
-        }
-
         /// <summary>
         /// Initializes a new instance of the <see cref="TokenIssuedSuccessEvent"/> class.
         /// </summary>

@@ -21,6 +21,16 @@ namespace SqlServer.Migrations.PersistedGrantDb
                 .HasAnnotation("Relational:MaxIdentifierLength", 128)
                 .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
+            DeviceFlowCodesModelBuilder(modelBuilder);
+            PersistedGrantModelBuilder(modelBuilder);
+#pragma warning restore 612, 618
+        }
+    }
+
+    public static class ModelBuilderExtensions
+    {
+        public static void DeviceFlowCodesModelBuilder(this ModelBuilder modelBuilder)
+        {
             modelBuilder.Entity("IdentityServer4.EntityFramework.Entities.DeviceFlowCodes", b =>
                 {
                     b.Property<string>("UserCode")
@@ -70,20 +80,15 @@ namespace SqlServer.Migrations.PersistedGrantDb
 
                     b.ToTable("DeviceCodes");
                 });
+        }
 
+        public static void PersistedGrantModelBuilder(this ModelBuilder modelBuilder)
+        {
             modelBuilder.Entity("IdentityServer4.EntityFramework.Entities.PersistedGrant", b =>
                 {
                     b.Property<string>("Key")
-                        .HasColumnType("nvarchar(200)")
-                        .HasMaxLength(200);
-
-                    b.Property<string>("ClientId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(200)")
-                        .HasMaxLength(200);
-
-                    b.Property<DateTime?>("ConsumedTime")
-                        .HasColumnType("datetime2");
+                        .ValueGeneratedNever()
+                        .IsRequired();
 
                     b.Property<DateTime>("CreationTime")
                         .HasColumnType("datetime2");
@@ -105,6 +110,7 @@ namespace SqlServer.Migrations.PersistedGrantDb
                         .HasMaxLength(100);
 
                     b.Property<string>("SubjectId")
+                        .IsRequired()
                         .HasColumnType("nvarchar(200)")
                         .HasMaxLength(200);
 
@@ -123,7 +129,6 @@ namespace SqlServer.Migrations.PersistedGrantDb
 
                     b.ToTable("PersistedGrants");
                 });
-#pragma warning restore 612, 618
         }
     }
 }

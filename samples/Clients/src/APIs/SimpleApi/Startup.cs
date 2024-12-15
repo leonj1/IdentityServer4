@@ -1,4 +1,4 @@
-﻿using Clients;
+using Clients;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -15,20 +15,7 @@ namespace SampleApi
     {
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddControllers();
-
-            services.AddCors();
-            services.AddDistributedMemoryCache();
-
-            // this API will accept any access token from the authority
-            services.AddAuthentication("token")
-                .AddJwtBearer("token", options =>
-                {
-                    options.Authority = Constants.Authority;
-                    options.TokenValidationParameters.ValidateAudience = false;
-                    
-                    options.TokenValidationParameters.ValidTypes = new[] { "at+jwt" };
-                });
+            ServiceConfigurator.ConfigureServices(services);
         }
 
         public void Configure(IApplicationBuilder app)
@@ -51,6 +38,27 @@ namespace SampleApi
             {
                 endpoints.MapControllers().RequireAuthorization();
             });
+        }
+    }
+
+    public static class ServiceConfigurator
+    {
+        public static void ConfigureServices(IServiceCollection services)
+        {
+            services.AddControllers();
+
+            services.AddCors();
+            services.AddDistributedMemoryCache();
+
+            // this API will accept any access token from the authority
+            services.AddAuthentication("token")
+                .AddJwtBearer("token", options =>
+                {
+                    options.Authority = Constants.Authority;
+                    options.TokenValidationParameters.ValidateAudience = false;
+                    
+                    options.TokenValidationParameters.ValidTypes = new[] { "at+jwt" };
+                });
         }
     }
 }

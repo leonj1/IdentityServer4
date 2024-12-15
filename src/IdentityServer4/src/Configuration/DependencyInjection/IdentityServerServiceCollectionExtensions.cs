@@ -1,7 +1,3 @@
-﻿// Copyright (c) Brock Allen & Dominick Baier. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See LICENSE in the project root for license information.
-
-
 using IdentityServer4.Configuration;
 using Microsoft.Extensions.Configuration;
 using System;
@@ -16,16 +12,6 @@ namespace Microsoft.Extensions.DependencyInjection
     /// </summary>
     public static class IdentityServerServiceCollectionExtensions
     {
-        /// <summary>
-        /// Creates a builder.
-        /// </summary>
-        /// <param name="services">The services.</param>
-        /// <returns></returns>
-        public static IIdentityServerBuilder AddIdentityServerBuilder(this IServiceCollection services)
-        {
-            return new IdentityServerBuilder(services);
-        }
-
         /// <summary>
         /// Adds IdentityServer.
         /// </summary>

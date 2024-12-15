@@ -68,11 +68,11 @@ namespace IdentityServer4.Validation
                 var clientAssertion = body[OidcConstants.TokenRequest.ClientAssertion].FirstOrDefault();
 
                 if (clientAssertion.IsPresent()
-                    && clientAssertionType == OidcConstants.ClientAssertionTypes.JwtBearer)
+                    && clientAssertionType == OidcConstants.AuthenticationMethods.PrivateKeyJwt)
                 {
-                    if (clientAssertion.Length > _options.InputLengthRestrictions.Jwt)
+                    if (clientAssertion.Length > _options.InputLengthRestrictions.ClientSecret)
                     {
-                        _logger.LogError("Client assertion token exceeds maximum length.");
+                        _logger.LogError("Client secret exceeds maximum length.");
                         return null;
                     }
 

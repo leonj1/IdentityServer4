@@ -17,17 +17,6 @@ namespace IdentityServer4.Models
     public static class ClientExtensions
     {
         /// <summary>
-        /// Returns true if the client is an implicit-only client.
-        /// </summary>
-        public static bool IsImplicitOnly(this Client client)
-        {
-            return client != null &&
-                client.AllowedGrantTypes != null &&
-                client.AllowedGrantTypes.Count == 1 &&
-                client.AllowedGrantTypes.First() == GrantType.Implicit;
-        }
-
-        /// <summary>
         /// Constructs a list of SecurityKey from a Secret collection
         /// </summary>
         /// <param name="secrets">The secrets</param>

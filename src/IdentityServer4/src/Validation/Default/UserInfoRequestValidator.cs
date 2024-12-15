@@ -1,7 +1,3 @@
-﻿// Copyright (c) Brock Allen & Dominick Baier. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See LICENSE in the project root for license information.
-
-
 using IdentityModel;
 using IdentityServer4.Extensions;
 using IdentityServer4.Models;
@@ -16,7 +12,7 @@ namespace IdentityServer4.Validation
     /// Default userinfo request validator
     /// </summary>
     /// <seealso cref="IdentityServer4.Validation.IUserInfoRequestValidator" />
-    internal class UserInfoRequestValidator : IUserInfoRequestValidator
+    public class UserInfoRequestValidator : IUserInfoRequestValidator
     {
         private readonly ITokenValidator _tokenValidator;
         private readonly IProfileService _profile;
@@ -43,7 +39,6 @@ namespace IdentityServer4.Validation
         /// </summary>
         /// <param name="accessToken">The access token.</param>
         /// <returns></returns>
-        /// <exception cref="System.NotImplementedException"></exception>
         public async Task<UserInfoRequestValidationResult> ValidateRequestAsync(string accessToken)
         {
             // the access token needs to be valid and have at least the openid scope

@@ -1,4 +1,4 @@
-﻿using Clients;
+using Clients;
 using IdentityModel.Client;
 using Newtonsoft.Json.Linq;
 using System;
@@ -19,8 +19,11 @@ namespace ConsoleClientCredentialsFlow
             Console.ReadLine();
             await CallServiceAsync(response.AccessToken);
         }
+    }
 
-        static async Task<TokenResponse> RequestTokenAsync()
+    public class TokenHandler
+    {
+        public static async Task<TokenResponse> RequestTokenAsync()
         {
             var client = new HttpClient();
 
@@ -41,7 +44,7 @@ namespace ConsoleClientCredentialsFlow
             return response;
         }
 
-        static async Task CallServiceAsync(string token)
+        public static async Task CallServiceAsync(string token)
         {
             var baseAddress = Constants.SampleApi;
 

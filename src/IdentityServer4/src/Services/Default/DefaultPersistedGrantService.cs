@@ -28,9 +28,7 @@ namespace IdentityServer4.Services
         /// <param name="store">The store.</param>
         /// <param name="serializer">The serializer.</param>
         /// <param name="logger">The logger.</param>
-        public DefaultPersistedGrantService(IPersistedGrantStore store, 
-            IPersistentGrantSerializer serializer,
-            ILogger<DefaultPersistedGrantService> logger)
+        public DefaultPersistedGrantService(IPersistedGrantStore store, IPersistentGrantSerializer serializer, ILogger<DefaultPersistedGrantService> logger)
         {
             _store = store;
             _serializer = serializer;
@@ -41,105 +39,58 @@ namespace IdentityServer4.Services
         public async Task<IEnumerable<Grant>> GetAllGrantsAsync(string subjectId)
         {
             if (String.IsNullOrWhiteSpace(subjectId)) throw new ArgumentNullException(nameof(subjectId));
-            
-            var grants = (await _store.GetAllAsync(new PersistedGrantFilter { SubjectId = subjectId })).ToArray();
+
+            var grants = await _store.GetAllAsync(new PersistedGrantFilter { SubjectId = subjectId });
 
             try
             {
-                var consents = grants.Where(x => x.Type == IdentityServerConstants.PersistedGrantTypes.UserConsent)
-                    .Select(x => _serializer.Deserialize<Consent>(x.Data))
-                    .Select(x => new Grant 
-                    {
-                        ClientId = x.ClientId,
-                        SubjectId = subjectId,
-                        Scopes = x.Scopes,
-                        CreationTime = x.CreationTime,
-                        Expiration = x.Expiration
-                    });
+                var consents = grants.Where(x => x.Type == IdentityServerConstants.PersistedGrantTypes.Consent).Select(x => _serializer.Deserialize<Consent>(x.Data));
+                var codes = grants.Where(x => x.Type == IdentityServerConstants.PersistedGrantTypes.AuthorizationCode).Select(x => _serializer.Deserialize<AuthorizationCode>(x.Data));
+                var refreshTokens = grants.Where(x => x.Type == IdentityServerConstants.PersistedGrantTypes.RefreshToken).Select(x => _serializer.Deserialize<Token>(x.Data));
+                var referenceTokens = grants.Where(x => x.Type == IdentityServerConstants.PersistedGrantTypes.ReferenceToken).Select(x => _serializer.Deserialize<Token>(x.Data));
 
-                var codes = grants.Where(x => x.Type == IdentityServerConstants.PersistedGrantTypes.AuthorizationCode)
-                    .Select(x => _serializer.Deserialize<AuthorizationCode>(x.Data))
-                    .Select(x => new Grant
-                    {
-                        ClientId = x.ClientId,
-                        SubjectId = subjectId,
-                        Description = x.Description,
-                        Scopes = x.RequestedScopes,
-                        CreationTime = x.CreationTime,
-                        Expiration = x.CreationTime.AddSeconds(x.Lifetime)
-                    });
-
-                var refresh = grants.Where(x => x.Type == IdentityServerConstants.PersistedGrantTypes.RefreshToken)
-                    .Select(x => _serializer.Deserialize<RefreshToken>(x.Data))
-                    .Select(x => new Grant
-                    {
-                        ClientId = x.ClientId,
-                        SubjectId = subjectId,
-                        Description = x.Description,
-                        Scopes = x.Scopes,
-                        CreationTime = x.CreationTime,
-                        Expiration = x.CreationTime.AddSeconds(x.Lifetime)
-                    });
-
-                var access = grants.Where(x => x.Type == IdentityServerConstants.PersistedGrantTypes.ReferenceToken)
-                    .Select(x => _serializer.Deserialize<Token>(x.Data))
-                    .Select(x => new Grant
-                    {
-                        ClientId = x.ClientId,
-                        SubjectId = subjectId,
-                        Description = x.Description,
-                        Scopes = x.Scopes,
-                        CreationTime = x.CreationTime,
-                        Expiration = x.CreationTime.AddSeconds(x.Lifetime)
-                    });
-
-                consents = Join(consents, codes);
-                consents = Join(consents, refresh);
-                consents = Join(consents, access);
-
-                return consents.ToArray();
+                return Join(consents, codes, refreshTokens, referenceTokens);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed processing results from grant store.");
+                _logger.LogError(ex, "Error joining grants");
+                throw;
             }
-
-            return Enumerable.Empty<Grant>();
         }
 
-        private IEnumerable<Grant> Join(IEnumerable<Grant> first, IEnumerable<Grant> second)
+        private IEnumerable<Grant> Join(IEnumerable<Grant> consents, IEnumerable<Grant> codes, IEnumerable<Grant> refreshTokens, IEnumerable<Grant> referenceTokens)
         {
-            var list = first.ToList();
+            var list = new List<Grant>();
 
-            foreach(var other in second)
+            foreach (var grant in consents.Concat(codes).Concat(refreshTokens).Concat(referenceTokens))
             {
-                var match = list.FirstOrDefault(x => x.ClientId == other.ClientId);
+                var match = list.FirstOrDefault(x => x.ClientId == grant.ClientId);
                 if (match != null)
                 {
-                    match.Scopes = match.Scopes.Union(other.Scopes).Distinct();
+                    match.Scopes = match.Scopes.Union(grant.Scopes).Distinct();
 
-                    if (match.CreationTime > other.CreationTime)
+                    if (match.CreationTime > grant.CreationTime)
                     {
                         // show the earlier creation time
-                        match.CreationTime = other.CreationTime;
+                        match.CreationTime = grant.CreationTime;
                     }
 
-                    if (match.Expiration == null || other.Expiration == null)
+                    if (match.Expiration == null || grant.Expiration == null)
                     {
                         // show that there is no expiration to one of the grants
                         match.Expiration = null;
                     }
-                    else if (match.Expiration < other.Expiration)
+                    else if (match.Expiration < grant.Expiration)
                     {
                         // show the latest expiration
-                        match.Expiration = other.Expiration;
+                        match.Expiration = grant.Expiration;
                     }
 
-                    match.Description = match.Description ?? other.Description;
+                    match.Description = match.Description ?? grant.Description;
                 }
                 else
                 {
-                    list.Add(other);
+                    list.Add(grant);
                 }
             }
 

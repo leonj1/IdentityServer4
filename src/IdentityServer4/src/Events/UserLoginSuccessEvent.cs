@@ -1,7 +1,3 @@
-﻿// Copyright (c) Brock Allen & Dominick Baier. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See LICENSE in the project root for license information.
-
-
 using static IdentityServer4.Constants;
 
 namespace IdentityServer4.Events
@@ -55,8 +51,6 @@ namespace IdentityServer4.Events
             Username = username;
             SubjectId = subjectId;
             DisplayName = name;
-            ClientId = clientId;
-
             if (interactive)
             {
                 Endpoint = "UI";
@@ -65,17 +59,7 @@ namespace IdentityServer4.Events
             {
                 Endpoint = EndpointNames.Token;
             }
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="UserLoginSuccessEvent"/> class.
-        /// </summary>
-        protected UserLoginSuccessEvent()
-            : base(EventCategories.Authentication,
-                  "User Login Success",
-                  EventTypes.Success,
-                  EventIds.UserLoginSuccess)
-        {
+            ClientId = clientId;
         }
 
         /// <summary>
@@ -133,5 +117,11 @@ namespace IdentityServer4.Events
         /// The client id.
         /// </value>
         public string ClientId { get; set; }
+
+        private UserLoginSuccessEvent()
+        {
+            Category = EventCategories.Authentication;
+            Name = "User Login Success";
+        }
     }
 }

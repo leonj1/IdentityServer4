@@ -1,4 +1,4 @@
-﻿using IdentityModel.OidcClient.Browser;
+using IdentityModel.OidcClient.Browser;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -44,65 +44,39 @@ namespace ConsoleClientWithBrowser
 
         public async Task<BrowserResult> InvokeAsync(BrowserOptions options, CancellationToken cancellationToken = default)
         {
-            using (var listener = new LoopbackHttpListener(Port, _path))
+            using (var loopbackHttpListener = new LoopbackHttpListener(Port, _path))
             {
-                OpenBrowser(options.StartUrl);
+                var url = loopbackHttpListener.Url;
 
                 try
                 {
-                    var result = await listener.WaitForCallbackAsync();
-                    if (String.IsNullOrWhiteSpace(result))
+                    await Process.Start(new ProcessStartInfo
                     {
-                        return new BrowserResult { ResultType = BrowserResultType.UnknownError, Error = "Empty response." };
-                    }
+                        FileName = "cmd.exe",
+                        Arguments = $"/c start {url}",
+                        RedirectStandardOutput = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    });
 
-                    return new BrowserResult { Response = result, ResultType = BrowserResultType.Success };
-                }
-                catch (TaskCanceledException ex)
-                {
-                    return new BrowserResult { ResultType = BrowserResultType.Timeout, Error = ex.Message };
+                    var result = await loopbackHttpListener.WaitForCallbackAsync();
+                    return new BrowserResult { Result = result };
                 }
                 catch (Exception ex)
                 {
-                    return new BrowserResult { ResultType = BrowserResultType.UnknownError, Error = ex.Message };
+                    return new BrowserResult { Error = ex.Message };
                 }
             }
         }
 
-        public static void OpenBrowser(string url)
+        public void Dispose()
         {
-            try
-            {
-                Process.Start(url);
-            }
-            catch
-            {
-                // hack because of this: https://github.com/dotnet/corefx/issues/10361
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                {
-                    url = url.Replace("&", "^&");
-                    Process.Start(new ProcessStartInfo("cmd", $"/c start {url}") { CreateNoWindow = true });
-                }
-                else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                {
-                    Process.Start("xdg-open", url);
-                }
-                else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-                {
-                    Process.Start("open", url);
-                }
-                else
-                {
-                    throw;
-                }
-            }
+            // No-op for now
         }
     }
 
     public class LoopbackHttpListener : IDisposable
     {
-        const int DefaultTimeout = 60 * 5; // 5 mins (in seconds)
-
         IWebHost _host;
         TaskCompletionSource<string> _source = new TaskCompletionSource<string>();
         string _url;
@@ -183,7 +157,7 @@ namespace ConsoleClientWithBrowser
             }
         }
 
-        public Task<string> WaitForCallbackAsync(int timeoutInSeconds = DefaultTimeout)
+        public Task<string> WaitForCallbackAsync(int timeoutInSeconds = 300)
         {
             Task.Run(async () =>
             {

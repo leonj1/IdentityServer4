@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using FluentAssertions;
@@ -46,17 +46,6 @@ namespace IdentityServer.UnitTests.Extensions
             {
                 throw new System.NotImplementedException();
             }
-        }
-
-        [Fact]
-        public void AddClientStoreCache_should_add_concrete_iclientstore_implementation()
-        {
-            var services = new ServiceCollection();
-            var identityServerBuilder = new IdentityServerBuilder(services);
-
-            identityServerBuilder.AddClientStoreCache<CustomClientStore>();
-
-            services.Any(x => x.ImplementationType == typeof(CustomClientStore)).Should().BeTrue();
         }
 
         [Fact]

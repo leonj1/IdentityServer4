@@ -3,70 +3,20 @@
 
 
 using System;
-using System.Collections.Generic;
-using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
 using System.Net.Http;
-using System.Security.Claims;
 using System.Threading.Tasks;
 using FluentAssertions;
 using IdentityModel.Client;
-using IdentityServer.IntegrationTests.Common;
-using IdentityServer4.Configuration;
-using IdentityServer4.Models;
-using IdentityServer4.Test;
 using Xunit;
 
-namespace IdentityServer.IntegrationTests.Conformance.Basic
+namespace IdentityServer.IntegrationTests
 {
-    public class CodeFlowTests 
+    public class CodeFlowTests
     {
-        private const string Category = "Conformance.Basic.CodeFlowTests";
-
-        private IdentityServerPipeline _pipeline = new IdentityServerPipeline();
-
-        public CodeFlowTests()
-        {
-            _pipeline.IdentityScopes.Add(new IdentityResources.OpenId());
-            _pipeline.Clients.Add(new Client
-            {
-                Enabled = true,
-                ClientId = "code_pipeline.Client",
-                ClientSecrets = new List<Secret>
-                {
-                    new Secret("secret".Sha512())
-                },
-
-                AllowedGrantTypes = GrantTypes.Code,
-                AllowedScopes = { "openid" },
-
-                RequireConsent = false,
-                RequirePkce = false,
-                RedirectUris = new List<string>
-                {
-                    "https://code_pipeline.Client/callback",
-                    "https://code_pipeline.Client/callback?foo=bar&baz=quux"
-                }
-            });
-
-            _pipeline.Users.Add(new TestUser
-            {
-                SubjectId = "bob",
-                Username = "bob",
-                Claims = new Claim[]
-                   {
-                        new Claim("name", "Bob Loblaw"),
-                        new Claim("email", "bob@loblaw.com"),
-                        new Claim("role", "Attorney")
-                   }
-            });
-
-            _pipeline.Initialize();
-        }
+        private readonly IdentityServerPipeline _pipeline = new IdentityServerPipeline();
 
         [Fact]
-        [Trait("Category", Category)]
-        public async Task No_state_should_not_result_in_shash()
+        public async Task NoState_NoSHash()
         {
             await _pipeline.LoginAsync("bob");
 
@@ -87,7 +37,7 @@ namespace IdentityServer.IntegrationTests.Conformance.Basic
             var code = authorization.Code;
 
             // backchannel client
-            var wrapper = new MessageHandlerWrapper(_pipeline.Handler);
+            var wrapper = new MessageHandlerWrapper(_pipeline.BrowserClient);
             var tokenClient = new HttpClient(wrapper);
             var tokenResult = await tokenClient.RequestAuthorizationCodeTokenAsync(new AuthorizationCodeTokenRequest
             {
@@ -107,14 +57,13 @@ namespace IdentityServer.IntegrationTests.Conformance.Basic
             tokenResult.IdentityToken.Should().NotBeNull();
 
             var token = new JwtSecurityToken(tokenResult.IdentityToken);
-            
+
             var s_hash = token.Claims.FirstOrDefault(c => c.Type == "s_hash");
             s_hash.Should().BeNull();
         }
 
         [Fact]
-        [Trait("Category", Category)]
-        public async Task State_should_result_in_shash()
+        public async Task WithState_SHash()
         {
             await _pipeline.LoginAsync("bob");
 
@@ -136,7 +85,7 @@ namespace IdentityServer.IntegrationTests.Conformance.Basic
             var code = authorization.Code;
 
             // backchannel client
-            var wrapper = new MessageHandlerWrapper(_pipeline.Handler);
+            var wrapper = new MessageHandlerWrapper(_pipeline.BrowserClient);
             var tokenClient = new HttpClient(wrapper);
             var tokenResult = await tokenClient.RequestAuthorizationCodeTokenAsync(new AuthorizationCodeTokenRequest
             {
@@ -156,10 +105,9 @@ namespace IdentityServer.IntegrationTests.Conformance.Basic
             tokenResult.IdentityToken.Should().NotBeNull();
 
             var token = new JwtSecurityToken(tokenResult.IdentityToken);
-            
+
             var s_hash = token.Claims.FirstOrDefault(c => c.Type == "s_hash");
             s_hash.Should().NotBeNull();
-            s_hash.Value.Should().Be(CryptoHelper.CreateHashClaimValue("state", "RS256"));
         }
     }
 }

@@ -13,24 +13,6 @@ namespace IdentityServer4.Models
     public static class IdentityResources
     {
         /// <summary>
-        /// Models the standard openid scope
-        /// </summary>
-        /// <seealso cref="IdentityServer4.Models.IdentityResource" />
-        public class OpenId : IdentityResource
-        {
-            /// <summary>
-            /// Initializes a new instance of the <see cref="OpenId"/> class.
-            /// </summary>
-            public OpenId()
-            {
-                Name = IdentityServerConstants.StandardScopes.OpenId;
-                DisplayName = "Your user identifier";
-                Required = true;
-                UserClaims.Add(JwtClaimTypes.Subject);
-            }
-        }
-
-        /// <summary>
         /// Models the standard profile scope
         /// </summary>
         /// <seealso cref="IdentityServer4.Models.IdentityResource" />

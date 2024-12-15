@@ -1,7 +1,3 @@
-﻿// Copyright (c) Brock Allen & Dominick Baier. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See LICENSE in the project root for license information.
-
-
 using System;
 using System.Linq;
 using System.Net;
@@ -15,7 +11,7 @@ namespace IdentityServer.IntegrationTests.Common
     // https://github.com/damianh/OwinHttpMessageHandler/blob/master/src/OwinHttpMessageHandler/OwinHttpMessageHandler.cs
     public class BrowserHandler : DelegatingHandler
     {
-        private CookieContainer _cookieContainer = new CookieContainer();
+        private CustomCookieContainer _cookieContainer = new CustomCookieContainer();
 
         public bool AllowCookies { get; set; } = true;
         public bool AllowAutoRedirect { get; set; } = true;
@@ -87,8 +83,10 @@ namespace IdentityServer.IntegrationTests.Common
 
             if (AllowCookies && response.Headers.Contains("Set-Cookie"))
             {
-                var responseCookieHeader = string.Join(",", response.Headers.GetValues("Set-Cookie"));
-                _cookieContainer.SetCookies(request.RequestUri, responseCookieHeader);
+                foreach (var setCookie in response.Headers.GetValues("Set-Cookie"))
+                {
+                    _cookieContainer.SetCookies(request.RequestUri, setCookie);
+                }
             }
 
             return response;

@@ -69,25 +69,17 @@ namespace IdentityServer4.Validation
             {
                 await RaiseFailureEventAsync(parsedSecret.Id, "Unknown client");
 
-                _logger.LogError("No client with id '{clientId}' found. aborting", parsedSecret.Id);
+                _logger.LogError("No client with id '{clientId}' found.", parsedSecret.Id);
                 return fail;
             }
 
-            SecretValidationResult secretValidationResult = null;
-            if (!client.RequireClientSecret || client.IsImplicitOnly())
+            var secretValidationResult = await _validator.ValidateAsync(client.ClientSecrets, parsedSecret);
+            if (secretValidationResult.Success == false)
             {
-                _logger.LogDebug("Public Client - skipping secret validation success");
-            }
-            else
-            {
-                secretValidationResult = await _validator.ValidateAsync(client.ClientSecrets, parsedSecret);
-                if (secretValidationResult.Success == false)
-                {
-                    await RaiseFailureEventAsync(client.ClientId, "Invalid client secret");
-                    _logger.LogError("Client secret validation failed for client: {clientId}.", client.ClientId);
+                await RaiseFailureEventAsync(parsedSecret.Id, "Client secret validation failed");
+                _logger.LogError("Client secret validation failed for client: {clientId}.", client.ClientId);
 
-                    return fail;
-                }
+                return fail;
             }
 
             _logger.LogDebug("Client validation success");

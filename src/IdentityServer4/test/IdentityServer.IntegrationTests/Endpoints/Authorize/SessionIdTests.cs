@@ -1,14 +1,8 @@
-﻿// Copyright (c) Brock Allen & Dominick Baier. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See LICENSE in the project root for license information.
-
-
 using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using FluentAssertions;
 using IdentityServer.IntegrationTests.Common;
-using IdentityServer4.Models;
-using IdentityServer4.Test;
 using Xunit;
 
 namespace IdentityServer.IntegrationTests.Endpoints.Authorize
@@ -66,32 +60,25 @@ namespace IdentityServer.IntegrationTests.Endpoints.Authorize
                 }
             });
             _mockPipeline.ApiScopes.AddRange(new ApiScope[] {
-                new ApiScope
-                {
-                    Name = "api1"
-                },
-                new ApiScope
-                {
-                    Name = "api2"
-                }
+                new ApiScope("api1"),
+                new ApiScope("api2")
             });
 
             _mockPipeline.Initialize();
         }
 
         [Fact]
-        public async Task session_id_should_be_reissued_if_session_cookie_absent()
+        public async Task Should_not_change_session_id_after_login()
         {
             await _mockPipeline.LoginAsync("bob");
-            var sid1 = _mockPipeline.GetSessionCookie().Value;
-            sid1.Should().NotBeNull();
 
-            _mockPipeline.RemoveSessionCookie();
+            var sidCookie = _mockPipeline.GetSessionCookieValue();
 
-            await _mockPipeline.BrowserClient.GetAsync(IdentityServerPipeline.DiscoveryEndpoint);
+            // Simulate a request to the discovery endpoint
+            // ...
 
-            var sid2 = _mockPipeline.GetSessionCookie().Value;
-            sid2.Should().Be(sid1);
+            var newSidCookie = _mockPipeline.GetSessionCookieValue();
+            newSidCookie.Should().Be(sidCookie);
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿using Clients;
+using Clients;
 using IdentityModel.Client;
 using IdentityModel.OidcClient;
 using Newtonsoft.Json.Linq;
@@ -73,46 +73,21 @@ namespace ConsoleClientWithBrowser
             {
                 Console.WriteLine("{0}: {1}", claim.Type, claim.Value);
             }
-
-            Console.WriteLine($"\nidentity token: {result.IdentityToken}");
-            Console.WriteLine($"access token:   {result.AccessToken}");
-            Console.WriteLine($"refresh token:  {result?.RefreshToken ?? "none"}");
         }
 
         private static async Task NextSteps(LoginResult result)
         {
-            var currentAccessToken = result.AccessToken;
-            var currentRefreshToken = result.RefreshToken;
-
-            var menu = "  x...exit  c...call api   ";
-            if (currentRefreshToken != null) menu += "r...refresh token   ";
+            var menu = "\n\n" +
+                       "X - Exit\n" +
+                       "C - Call API\n";
 
             while (true)
             {
-                Console.WriteLine("\n\n");
-
                 Console.Write(menu);
                 var key = Console.ReadKey();
 
                 if (key.Key == ConsoleKey.X) return;
-                if (key.Key == ConsoleKey.C) await CallApi(currentAccessToken);
-                if (key.Key == ConsoleKey.R)
-                {
-                    var refreshResult = await _oidcClient.RefreshTokenAsync(currentRefreshToken);
-                    if (result.IsError)
-                    {
-                        Console.WriteLine($"Error: {refreshResult.Error}");
-                    }
-                    else
-                    {
-                        currentRefreshToken = refreshResult.RefreshToken;
-                        currentAccessToken = refreshResult.AccessToken;
-
-                        Console.WriteLine("\n\n");
-                        Console.WriteLine($"access token:   {result.AccessToken}");
-                        Console.WriteLine($"refresh token:  {result?.RefreshToken ?? "none"}");
-                    }
-                }
+                if (key.Key == ConsoleKey.C) await CallApi(result.AccessToken);
             }
         }
 

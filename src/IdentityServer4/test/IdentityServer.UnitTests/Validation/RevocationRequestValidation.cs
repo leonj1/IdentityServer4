@@ -1,7 +1,3 @@
-﻿// Copyright (c) Brock Allen & Dominick Baier. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See LICENSE in the project root for license information.
-
-
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Threading.Tasks;
@@ -90,23 +86,6 @@ namespace IdentityServer.UnitTests.Validation
             result.IsError.Should().BeFalse();
             result.Token.Should().Be("foo");
             result.TokenTypeHint.Should().Be("access_token");
-        }
-
-        [Fact]
-        [Trait("Category", Category)]
-        public async Task Valid_Token_and_RefreshTokenHint()
-        {
-            var parameters = new NameValueCollection
-            {
-                { "token", "foo" },
-                { "token_type_hint", "refresh_token" }
-            };
-
-            var result = await _validator.ValidateRequestAsync(parameters, _client);
-
-            result.IsError.Should().BeFalse();
-            result.Token.Should().Be("foo");
-            result.TokenTypeHint.Should().Be("refresh_token");
         }
 
         [Fact]

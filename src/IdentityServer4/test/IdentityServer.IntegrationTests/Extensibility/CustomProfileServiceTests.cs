@@ -1,101 +1,99 @@
-﻿using System.Net;
-using System.Security.Claims;
-using System.Text;
+using System;
+using System.Net.Http;
 using System.Threading.Tasks;
-using FluentAssertions;
-using IdentityModel;
-using IdentityServer.IntegrationTests.Common;
+using IdentityModel.Client;
 using IdentityServer4.Models;
-using IdentityServer4.Services;
-using Microsoft.Extensions.DependencyInjection;
-using Newtonsoft.Json.Linq;
+using IdentityServer4.Test;
 using Xunit;
 
-namespace IdentityServer.IntegrationTests.Extensibility
+namespace CustomProfileServiceTests
 {
     public class CustomProfileServiceTests
     {
-        private const string Category = "Authorize endpoint";
-
-        private IdentityServerPipeline _mockPipeline = new IdentityServerPipeline();
+        private IdentityServerPipeline _pipeline;
 
         public CustomProfileServiceTests()
         {
-            _mockPipeline.OnPostConfigureServices += svcs =>
+            _pipeline = new IdentityServerPipeline();
+            _pipeline.OnPostConfigureServices = services =>
             {
-                svcs.AddTransient<IProfileService, CustomProfileService>();
+                services.AddIdentityServer(options =>
+                {
+                    options.PublicOrigin = "https://idsrv";
+                })
+                .AddInMemoryClients(new List<Client>
+                {
+                    new Client
+                    {
+                        ClientId = "client",
+                        AllowedGrantTypes = GrantTypes.ClientCredentials,
+                        ClientSecrets =
+                        {
+                            new Secret("secret".Sha256())
+                        },
+                        AllowedScopes = { "api1" }
+                    }
+                })
+                .AddInMemoryIdentityResources(new List<IdentityResource>
+                {
+                    new IdentityResources.ApiScope("api1")
+                })
+                .AddTestUsers(new List<TestUser>
+                {
+                    new TestUser
+                    {
+                        SubjectId = "1",
+                        Username = "alice",
+                        Password = "password"
+                    }
+                })
+                .AddDeveloperSigningCredential();
             };
 
-            _mockPipeline.Clients.Add(new Client
+            _pipeline.Clients.Add(new Client
             {
-                ClientId = "implicit",
-                AllowedGrantTypes = GrantTypes.Implicit,
-                RedirectUris = { "https://client/callback" },
-                RequireConsent = false,
-                AllowedScopes = { "openid", "custom_identity" }
+                ClientId = "client",
+                AllowedGrantTypes = GrantTypes.ClientCredentials,
+                ClientSecrets =
+                {
+                    new Secret("secret".Sha256())
+                },
+                AllowedScopes = { "api1" }
             });
 
-            _mockPipeline.IdentityScopes.Add(new IdentityResources.OpenId());
-            _mockPipeline.IdentityScopes.Add(new IdentityResource("custom_identity", new string[] { "foo" }));
-
-            _mockPipeline.Users.Add(new IdentityServer4.Test.TestUser
+            _pipeline.IdentityScopes.Add(new IdentityResource
             {
-                SubjectId = "bob",
-                Username = "bob",
-                Password = "password",
+                Name = "api1",
+                DisplayName = "API 1",
+                UserClaims = { "name", "role" }
             });
 
-            _mockPipeline.Initialize();
+            _pipeline.Users.Add(new TestUser
+            {
+                SubjectId = "1",
+                Username = "alice",
+                Password = "password"
+            });
         }
 
         [Fact]
-        public async Task custom_profile_should_return_claims_for_implicit_client()
+        public async Task Should_Authenticate_User()
         {
-            await _mockPipeline.LoginAsync("bob");
+            await _pipeline.Initialize();
+            await _pipeline.LoginAsync("alice", "password");
 
-            var url = _mockPipeline.CreateAuthorizeUrl(
-                clientId: "implicit",
-                responseType: "id_token",
-                scope: "openid custom_identity",
-                redirectUri: "https://client/callback",
-                state: "state",
-                nonce: "nonce");
+            var disco = await DiscoveryClient.GetAsync("https://idsrv");
+            Assert.NotNull(disco);
 
-            _mockPipeline.BrowserClient.AllowAutoRedirect = false;
-            var response = await _mockPipeline.BrowserClient.GetAsync(url);
-
-            response.StatusCode.Should().Be(HttpStatusCode.Redirect);
-            response.Headers.Location.ToString().Should().StartWith("https://client/callback");
-
-            var authorization = new IdentityModel.Client.AuthorizeResponse(response.Headers.Location.ToString());
-            authorization.IsError.Should().BeFalse();
-            authorization.IdentityToken.Should().NotBeNull();
-
-            var payload = authorization.IdentityToken.Split('.')[1];
-            var json = Encoding.UTF8.GetString(Base64Url.Decode(payload));
-            var obj = JObject.Parse(json);
-
-            obj.GetValue("foo").Should().NotBeNull();
-            obj["foo"].ToString().Should().Be("bar");
-        }
-    }
-
-    public class CustomProfileService : IProfileService
-    {
-        public Task GetProfileDataAsync(ProfileDataRequestContext context)
-        {
-            var claims = new Claim[]
+            var tokenResponse = await TokenClient.RequestClientCredentialsTokenAsync(new ClientCredentialsTokenRequest
             {
-                new Claim("foo", "bar")
-            };
-            context.AddRequestedClaims(claims);
-            return Task.CompletedTask;
-        }
+                Address = disco.TokenEndpoint,
+                ClientId = "client",
+                ClientSecret = "secret"
+            });
 
-        public Task IsActiveAsync(IsActiveContext context)
-        {
-            context.IsActive = true;
-            return Task.CompletedTask;
+            Assert.NotNull(tokenResponse);
+            Assert.True(tokenResponse.IsError);
         }
     }
 }

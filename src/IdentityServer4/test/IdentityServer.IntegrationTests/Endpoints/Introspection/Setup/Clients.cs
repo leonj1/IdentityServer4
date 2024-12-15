@@ -1,7 +1,3 @@
-﻿// Copyright (c) Brock Allen & Dominick Baier. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See LICENSE in the project root for license information.
-
-
 using System.Collections.Generic;
 using IdentityServer4.Models;
 
@@ -18,7 +14,7 @@ namespace IdentityServer.IntegrationTests.Endpoints.Introspection.Setup
                     ClientId = "client1",
                     ClientSecrets = new List<Secret>
                     {
-                        new Secret("secret".Sha256())
+                        Secret.Sha256("secret")
                     },
 
                     AllowedGrantTypes = GrantTypes.ClientCredentials,
@@ -30,7 +26,7 @@ namespace IdentityServer.IntegrationTests.Endpoints.Introspection.Setup
                     ClientId = "client2",
                     ClientSecrets = new List<Secret>
                     {
-                        new Secret("secret".Sha256())
+                        Secret.Sha256("secret")
                     },
 
                     AllowedGrantTypes = GrantTypes.ClientCredentials,
@@ -42,7 +38,7 @@ namespace IdentityServer.IntegrationTests.Endpoints.Introspection.Setup
                     ClientId = "client3",
                     ClientSecrets = new List<Secret>
                     {
-                        new Secret("secret".Sha256())
+                        Secret.Sha256("secret")
                     },
 
                     AllowedGrantTypes = GrantTypes.ClientCredentials,
@@ -54,7 +50,7 @@ namespace IdentityServer.IntegrationTests.Endpoints.Introspection.Setup
                     ClientId = "ro.client",
                     ClientSecrets = new List<Secret>
                     {
-                        new Secret("secret".Sha256())
+                        Secret.Sha256("secret")
                     },
 
                     AllowedGrantTypes = GrantTypes.ResourceOwnerPassword,

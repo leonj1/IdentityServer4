@@ -1,7 +1,3 @@
-﻿// Copyright (c) Brock Allen & Dominick Baier. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See LICENSE in the project root for license information.
-
-
 using IdentityServer4.Models;
 using Microsoft.Extensions.Logging;
 using System;
@@ -36,89 +32,47 @@ namespace IdentityServer4.Validation
         /// </returns>
         public override async Task<bool> IsRedirectUriValidAsync(string requestedUri, Client client)
         {
-            var isAllowed = await base.IsRedirectUriValidAsync(requestedUri, client);
-            if (isAllowed) return isAllowed;
+            if (string.IsNullOrEmpty(requestedUri))
+                return false;
 
-            // since this is appauth specific, we can require pkce
-            if (client.RequirePkce && client.RedirectUris.Contains("http://127.0.0.1")) return IsLoopback(requestedUri);
+            if (!requestedUri.StartsWith("http://127.0.0.1", StringComparison.OrdinalIgnoreCase))
+                return false;
 
-            return false;
+            var portIndex = requestedUri.IndexOf(':');
+            if (portIndex == -1 || portIndex + 1 >= requestedUri.Length)
+                return false;
+
+            int port;
+            if (!int.TryParse(requestedUri.Substring(portIndex + 1), out port) || port < 0 || port > 65535)
+                return false;
+
+            return true;
         }
 
         /// <summary>
-        /// Determines whether a post logout URI is valid for a client.
+        /// Determines whether a post logout redirect URI is valid for a client.
         /// </summary>
         /// <param name="requestedUri">The requested URI.</param>
         /// <param name="client">The client.</param>
         /// <returns>
-        /// <c>true</c> is the URI is valid; <c>false</c> otherwise.
+        /// <c>true</c> if the URI is valid; <c>false</c> otherwise.
         /// </returns>
         public override async Task<bool> IsPostLogoutRedirectUriValidAsync(string requestedUri, Client client)
         {
-            var isAllowed = await base.IsPostLogoutRedirectUriValidAsync(requestedUri, client);
-            if (isAllowed) return isAllowed;
-
-            // since this is appauth specific, we can require pkce
-            if (client.RequirePkce && client.RedirectUris.Contains("http://127.0.0.1")) return IsLoopback(requestedUri);
-
-            return false;
+            return await IsRedirectUriValidAsync(requestedUri, client);
         }
 
         /// <summary>
-        /// Check if <paramref name="requestedUri"/> is of the form http://127.0.0.1:port/path.
+        /// Determines whether a logout URI is valid for a client.
         /// </summary>
         /// <param name="requestedUri">The requested URI.</param>
+        /// <param name="client">The client.</param>
         /// <returns>
-        /// <c>true</c> if <paramref name="requestedUri"/> is a valid Loopback URI; <c>false</c> otherwise.
+        /// <c>true</c> if the URI is valid; <c>false</c> otherwise.
         /// </returns>
-        internal bool IsLoopback(string requestedUri)
+        public override async Task<bool> IsLogoutUriValidAsync(string requestedUri, Client client)
         {
-            _logger.LogDebug("Checking for 127.0.0.1 redirect URI");
-
-            // Validate that the requestedUri is not null or empty.
-            if (string.IsNullOrEmpty(requestedUri))
-            {
-                _logger.LogDebug("'requestedUri' is null or empty");
-                return false;
-            }
-
-            var parts = requestedUri.Split(':');
-
-            if (parts.Length != 3)
-            {
-                _logger.LogDebug("invalid format - http://127.0.0.1:port is required.");
-                return false;
-            }
-
-            if (!string.Equals(parts[0], "http", StringComparison.Ordinal) ||
-                !string.Equals(parts[1], "//127.0.0.1", StringComparison.Ordinal))
-            {
-                _logger.LogDebug("invalid format - http://127.0.0.1:port is required.");
-                return false;
-            }
-
-            string portAsString;
-            int indexOfPathSeparator = parts[2].IndexOfAny(new[] { '/', '?', '#' });
-            if (indexOfPathSeparator > 0)
-            {
-                portAsString = parts[2].Substring(0, indexOfPathSeparator);
-            }
-            else
-            {
-                portAsString = parts[2];
-            }
-
-            // Valid port range is 0 through 65535.
-            if (int.TryParse(portAsString, out var port))
-            {
-                if (port >= 0 && port < 65536)
-                {
-                    return true;
-                }
-            }
-
-            _logger.LogDebug("invalid port");
-            return false;
+            return await IsRedirectUriValidAsync(requestedUri, client);
         }
     }
 }

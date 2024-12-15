@@ -1,4 +1,4 @@
-﻿using Clients;
+using Clients;
 using IdentityModel.Client;
 using System;
 using System.Net.Http;
@@ -8,7 +8,7 @@ namespace ConsoleResourceOwnerFlowUserInfo
 {
     class Program
     {
-        static HttpClient _tokenClient = new HttpClient();
+        static HttpClientWrapper _httpClientWrapper = new HttpClientWrapper();
         static DiscoveryCache _cache = new DiscoveryCache(Constants.Authority);
 
         static async Task Main()
@@ -26,7 +26,7 @@ namespace ConsoleResourceOwnerFlowUserInfo
             var disco = await _cache.GetAsync();
             if (disco.IsError) throw new Exception(disco.Error);
 
-            var response = await _tokenClient.RequestPasswordTokenAsync(new PasswordTokenRequest
+            var response = await _httpClientWrapper.RequestPasswordTokenAsync(new PasswordTokenRequest
             {
                 Address = disco.TokenEndpoint,
 
@@ -48,7 +48,7 @@ namespace ConsoleResourceOwnerFlowUserInfo
             var disco = await _cache.GetAsync();
             if (disco.IsError) throw new Exception(disco.Error);
 
-            var response = await _tokenClient.GetUserInfoAsync(new UserInfoRequest
+            var response = await _httpClientWrapper.GetUserInfoAsync(new UserInfoRequest
             {
                 Address = disco.UserInfoEndpoint,
                 Token = token

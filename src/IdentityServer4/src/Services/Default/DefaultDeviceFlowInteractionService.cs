@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 
 namespace IdentityServer4.Services
 {
-    internal class DefaultDeviceFlowInteractionService : IDeviceFlowInteractionService
+    public class DefaultDeviceFlowInteractionService : IDeviceFlowInteractionService
     {
         private readonly IClientStore _clients;
         private readonly IUserSession _session;
@@ -65,10 +65,8 @@ namespace IdentityServer4.Services
             var client = await _clients.FindClientByIdAsync(deviceAuth.ClientId);
             if (client == null) return LogAndReturnError("Invalid client", "Device authorization failure - requesting client is invalid");
 
-            var subject = await _session.GetUserAsync();
-            if (subject == null) return LogAndReturnError("No user present in device flow request", "Device authorization failure - no user found");
-            
-            var sid = await _session.GetSessionIdAsync();
+            var subject = await _session.GetSubjectIdentifier(userCode);
+            var sid = await _session.GetSessionId(subject);
 
             deviceAuth.IsAuthorized = true;
             deviceAuth.Subject = subject;

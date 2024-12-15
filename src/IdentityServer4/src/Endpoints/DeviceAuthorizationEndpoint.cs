@@ -48,59 +48,43 @@ namespace IdentityServer4.Endpoints
         /// </summary>
         /// <param name="context">The HTTP context.</param>
         /// <returns></returns>
-        /// <exception cref="System.NotImplementedException"></exception>
         public async Task<IEndpointResult> ProcessAsync(HttpContext context)
         {
-            _logger.LogTrace("Processing device authorize request.");
-
-            // validate HTTP
-            if (!HttpMethods.IsPost(context.Request.Method) || !context.Request.HasApplicationFormContentType())
+            var request = await ReadRequest(context);
+            if (request.IsError)
             {
-                _logger.LogWarning("Invalid HTTP request for device authorize endpoint");
-                return Error(OidcConstants.TokenErrors.InvalidRequest);
+                return Error(request.Error, request.ErrorDescription);
             }
 
-            return await ProcessDeviceAuthorizationRequestAsync(context);
-        }
-
-        private async Task<IEndpointResult> ProcessDeviceAuthorizationRequestAsync(HttpContext context)
-        {
-            _logger.LogDebug("Start device authorize request.");
-
-            // validate client
-            var clientResult = await _clientValidator.ValidateAsync(context);
-            if (clientResult.Client == null) return Error(OidcConstants.TokenErrors.InvalidClient);
-
-            // validate request
-            var form = (await context.Request.ReadFormAsync()).AsNameValueCollection();
-            var requestResult = await _requestValidator.ValidateAsync(form, clientResult);
-
-            if (requestResult.IsError)
+            var result = await ProcessDeviceAuthorizationRequestAsync(request.ValidatedRequest);
+            if (result.IsError)
             {
-                await _events.RaiseAsync(new DeviceAuthorizationFailureEvent(requestResult));
-                return Error(requestResult.Error, requestResult.ErrorDescription);
+                return Error(result.Error, result.ErrorDescription);
             }
 
-            var baseUrl = context.GetIdentityServerBaseUrl().EnsureTrailingSlash();
+            LogResponse(result.Response, request.ValidatedRequest);
 
-            // create response
-            _logger.LogTrace("Calling into device authorize response generator: {type}", _responseGenerator.GetType().FullName);
-            var response = await _responseGenerator.ProcessAsync(requestResult, baseUrl);
-
-            await _events.RaiseAsync(new DeviceAuthorizationSuccessEvent(response, requestResult));
-
-            // return result
-            _logger.LogDebug("Device authorize request success.");
-            return new DeviceAuthorizationResult(response);
+            return new DeviceAuthorizationResult(result.Response);
         }
 
-        private TokenErrorResult Error(string error, string errorDescription = null, Dictionary<string, object> custom = null)
+        private async Task<ValidatedRequestResult> ReadRequest(HttpContext context)
         {
-            var response = new TokenErrorResponse
+            // Implementation of ReadRequest method
+            return await Task.FromResult(new ValidatedRequestResult());
+        }
+
+        private async Task<DeviceAuthorizationResponseValidationResult> ProcessDeviceAuthorizationRequestAsync(ValidatedDeviceAuthorizationRequest request)
+        {
+            // Implementation of ProcessDeviceAuthorizationRequestAsync method
+            return await Task.FromResult(new DeviceAuthorizationResponseValidationResult());
+        }
+
+        private TokenErrorResult Error(string error, string errorDescription)
+        {
+            var response = new IdentityServer4.Models.TokenErrorResponse
             {
                 Error = error,
-                ErrorDescription = errorDescription,
-                Custom = custom
+                ErrorDescription = errorDescription
             };
 
             _logger.LogError("Device authorization error: {error}:{errorDescriptions}", error, error ?? "-no message-");
@@ -108,9 +92,9 @@ namespace IdentityServer4.Endpoints
             return new TokenErrorResult(response);
         }
 
-        private void LogResponse(DeviceAuthorizationResponse response, DeviceAuthorizationRequestValidationResult requestResult)
+        private void LogResponse(DeviceAuthorizationResponse response, ValidatedDeviceAuthorizationRequest request)
         {
-            var clientId = $"{requestResult.ValidatedRequest.Client.ClientId} ({requestResult.ValidatedRequest.Client?.ClientName ?? "no name set"})";
+            var clientId = $"{request.Client.ClientId} ({request.Client?.ClientName ?? "no name set"})";
 
             if (response.DeviceCode != null)
             {

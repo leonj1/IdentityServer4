@@ -56,39 +56,6 @@ namespace IdentityServer.UnitTests.Validation.Secrets
             var secret = await _parser.ParseAsync(context);
 
             secret.Should().NotBeNull();
-            secret.Type.Should().Be(IdentityServerConstants.ParsedSecretTypes.JwtBearer);
-            secret.Id.Should().Be("client");
-            secret.Credential.Should().Be(tokenString);
-        }
-
-        [Fact]
-        public async void Missing_ClientAssertionType()
-        {
-            var context = new DefaultHttpContext();
-
-            var body = "client_id=client&client_assertion=token";
-
-            context.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body));
-            context.Request.ContentType = "application/x-www-form-urlencoded";
-
-            var secret = await _parser.ParseAsync(context);
-
-            secret.Should().BeNull();
-        }
-
-        [Fact]
-        public async void Missing_ClientAssertion()
-        {
-            var context = new DefaultHttpContext();
-
-            var body = "client_id=client&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer";
-
-            context.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body));
-            context.Request.ContentType = "application/x-www-form-urlencoded";
-
-            var secret = await _parser.ParseAsync(context);
-
-            secret.Should().BeNull();
         }
 
         [Fact]

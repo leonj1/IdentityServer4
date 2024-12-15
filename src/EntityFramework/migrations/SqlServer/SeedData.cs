@@ -1,14 +1,13 @@
-﻿using System;
+using System;
 using System.Linq;
 using IdentityServerHost.Configuration;
 using IdentityServer4.EntityFramework.DbContexts;
 using IdentityServer4.EntityFramework.Interfaces;
 using IdentityServer4.EntityFramework.Mappers;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace SqlServer
 {
-    public class SeedData
+    public static class SeedData
     {
         public static void EnsureSeedData(IServiceProvider serviceProvider)
         {
@@ -85,5 +84,4 @@ namespace SqlServer
             Console.WriteLine();
         }
     }
-
 }

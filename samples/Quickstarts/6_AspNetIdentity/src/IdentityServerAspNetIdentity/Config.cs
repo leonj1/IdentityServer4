@@ -17,13 +17,6 @@ namespace IdentityServerAspNetIdentity
                 new IdentityResources.Profile(),
             };
 
-
-        public static IEnumerable<ApiScope> ApiScopes =>
-            new List<ApiScope>
-            {
-                new ApiScope("api1", "My API")
-            };
-
         public static IEnumerable<Client> Clients =>
             new List<Client>
             {

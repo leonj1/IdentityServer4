@@ -78,63 +78,38 @@ namespace IdentityServer4.Validation
                 _logger.LogWarning("Malformed Basic Authentication credential.");
                 return notfound;
             }
-            catch (ArgumentException)
-            {
-                _logger.LogWarning("Malformed Basic Authentication credential.");
-                return notfound;
-            }
 
-            var ix = pair.IndexOf(':');
-            if (ix == -1)
+            if (pair.Length > 0 && pair.Contains(':'))
             {
-                _logger.LogWarning("Malformed Basic Authentication credential.");
-                return notfound;
-            }
+                var parts = pair.Split(':', 2);
+                var clientId = parts[0];
+                var clientSecret = parts.Length == 2 ? parts[1] : null;
 
-            var clientId = pair.Substring(0, ix);
-            var secret = pair.Substring(ix + 1);
+                _logger.LogDebug("Basic Authentication secret found");
 
-            if (clientId.IsPresent())
-            {
-                if (clientId.Length > _options.InputLengthRestrictions.ClientId)
+                if (clientId.IsMissing())
                 {
-                    _logger.LogError("Client ID exceeds maximum length.");
+                    _logger.LogWarning("Invalid Basic Authentication format.");
                     return notfound;
                 }
 
-                if (secret.IsPresent())
+                if (clientSecret != null && clientSecret.Length > _options.InputLengthRestrictions.ClientSecret)
                 {
-                    if (secret.Length > _options.InputLengthRestrictions.ClientSecret)
-                    {
-                        _logger.LogError("Client secret exceeds maximum length.");
-                        return notfound;
-                    }
-
-                    var parsedSecret = new ParsedSecret
-                    {
-                        Id = Decode(clientId),
-                        Credential = Decode(secret),
-                        Type = IdentityServerConstants.ParsedSecretTypes.SharedSecret
-                    };
-
-                    return Task.FromResult(parsedSecret);
+                    _logger.LogError("Client secret exceeds maximum length.");
+                    return notfound;
                 }
-                else
+
+                var parsedSecret = new ParsedSecret
                 {
-                    // client secret is optional
-                    _logger.LogDebug("client id without secret found");
+                    Id = Decode(clientId),
+                    Credential = clientSecret == null ? null : Decode(clientSecret),
+                    Type = IdentityServerConstants.ParsedSecretTypes.SharedSecret
+                };
 
-                    var parsedSecret = new ParsedSecret
-                    {
-                        Id = Decode(clientId),
-                        Type = IdentityServerConstants.ParsedSecretTypes.NoSecret
-                    };
-
-                    return Task.FromResult(parsedSecret);
-                }
+                return Task.FromResult(parsedSecret);
             }
 
-            _logger.LogDebug("No Basic Authentication secret found");
+            _logger.LogWarning("Invalid Basic Authentication format.");
             return notfound;
         }
 

@@ -1,7 +1,3 @@
-﻿// Copyright (c) Brock Allen & Dominick Baier. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See LICENSE in the project root for license information.
-
-
 using IdentityServer4.Validation;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -63,34 +59,28 @@ namespace IdentityServer4.Models
         public string Tenant { get; set; }
 
         /// <summary>
-        /// The expected username the user will use to login. This is requested from the client 
-        /// via the <c>login_hint</c> parameter on the authorize request.
+        /// Gets or sets the login hint.
         /// </summary>
         /// <value>
-        /// The LoginHint.
+        /// The login hint.
         /// </value>
         public string LoginHint { get; set; }
 
         /// <summary>
-        /// Gets or sets the collection of prompt modes.
+        /// Gets or sets the prompt modes.
         /// </summary>
         /// <value>
-        /// The collection of prompt modes.
+        /// The prompt modes.
         /// </value>
-        public IEnumerable<string> PromptModes { get; set; } = Enumerable.Empty<string>();
+        public IEnumerable<string> PromptModes { get; set; }
 
         /// <summary>
-        /// The acr values passed from the authorization request.
+        /// Gets or sets the ACR values.
         /// </summary>
         /// <value>
-        /// The acr values.
+        /// The ACR values.
         /// </value>
         public IEnumerable<string> AcrValues { get; set; }
-
-        /// <summary>
-        /// The validated resources.
-        /// </summary>
-        public ResourceValidationResult ValidatedResources { get; set; }
 
         /// <summary>
         /// Gets the entire parameter collection.
@@ -107,7 +97,6 @@ namespace IdentityServer4.Models
         /// The request object values
         /// </value>
         public Dictionary<string, string> RequestObjectValues { get; } = new Dictionary<string, string>();
-
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AuthorizationRequest"/> class.
@@ -136,5 +125,13 @@ namespace IdentityServer4.Models
             Parameters = request.Raw;
             RequestObjectValues = request.RequestObjectValues;
         }
+
+        /// <summary>
+        /// Gets the validated resources.
+        /// </summary>
+        /// <value>
+        /// The validated resources.
+        /// </value>
+        public ValidatedResources ValidatedResources { get; set; }
     }
 }

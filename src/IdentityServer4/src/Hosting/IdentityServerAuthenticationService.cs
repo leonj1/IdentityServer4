@@ -1,109 +1,33 @@
-// Copyright (c) Brock Allen & Dominick Baier. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See LICENSE in the project root for license information.
-
-
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Http;
-using System.Security.Claims;
-using System.Threading.Tasks;
-using IdentityServer4.Services;
-using Microsoft.Extensions.Logging;
-using IdentityServer4.Configuration.DependencyInjection;
-using IdentityServer4.Extensions;
-using System;
-using IdentityModel;
-using System.Linq;
-using IdentityServer4.Configuration;
-
-namespace IdentityServer4.Hosting
+// IdentityServer.Services/IdentityServerAuthenticationService.cs
+namespace IdentityServer.Services
 {
-    // this decorates the real authentication service to detect when the 
-    // user is being signed in. this allows us to ensure the user has
-    // the claims needed for identity server to do its job. it also allows
-    // us to track signin/signout so we can issue/remove the session id
-    // cookie used for check session iframe for session management spec.
-    // finally, we track if signout is called to collaborate with the 
-    // FederatedSignoutAuthenticationHandlerProvider for federated signout.
-    internal class IdentityServerAuthenticationService : IAuthenticationService
+    using Microsoft.AspNetCore.Http;
+    using System.Linq;
+    using System.Security.Claims;
+    using System.Threading.Tasks;
+
+    public class IdentityServerAuthenticationService
     {
-        private readonly IAuthenticationService _inner;
-        private readonly IAuthenticationSchemeProvider _schemes;
-        private readonly ISystemClock _clock;
-        private readonly IUserSession _session;
-        private readonly IBackChannelLogoutService _backChannelLogoutService;
-        private readonly IdentityServerOptions _options;
-        private readonly ILogger<IdentityServerAuthenticationService> _logger;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public IdentityServerAuthenticationService(
-            Decorator<IAuthenticationService> decorator,
-            IAuthenticationSchemeProvider schemes,
-            ISystemClock clock,
-            IUserSession session,
-            IBackChannelLogoutService backChannelLogoutService,
-            IdentityServerOptions options,
-            ILogger<IdentityServerAuthenticationService> logger)
+        public IdentityServerAuthenticationService(IHttpContextAccessor httpContextAccessor)
         {
-            _inner = decorator.Instance;
-            
-            _schemes = schemes;
-            _clock = clock;
-            _session = session;
-            _backChannelLogoutService = backChannelLogoutService;
-            _options = options;
-            _logger = logger;
+            _httpContextAccessor = httpContextAccessor;
         }
 
-        public async Task SignInAsync(HttpContext context, string scheme, ClaimsPrincipal principal, AuthenticationProperties properties)
+        public async Task<AuthenticateResult> AuthenticateAsync(string scheme)
         {
-            var defaultScheme = await _schemes.GetDefaultSignInSchemeAsync();
-            var cookieScheme = await context.GetCookieAuthenticationSchemeAsync();
-
-            if ((scheme == null && defaultScheme?.Name == cookieScheme) || scheme == cookieScheme)
-            {
-                AugmentPrincipal(principal);
-
-                properties ??= new AuthenticationProperties();
-                await _session.CreateSessionIdAsync(principal, properties);
-            }
-
-            await _inner.SignInAsync(context, scheme, principal, properties);
+            return await _httpContextAccessor.HttpContext.AuthenticateAsync(scheme);
         }
 
-        private void AugmentPrincipal(ClaimsPrincipal principal)
+        public Task ChallengeAsync(string scheme, AuthenticationProperties properties)
         {
-            _logger.LogDebug("Augmenting SignInContext");
-
-            AssertRequiredClaims(principal);
-            AugmentMissingClaims(principal, _clock.UtcNow.UtcDateTime);
+            return _httpContextAccessor.HttpContext.ChallengeAsync(scheme, properties);
         }
 
-        public async Task SignOutAsync(HttpContext context, string scheme, AuthenticationProperties properties)
+        public Task ForbidAsync(string scheme, AuthenticationProperties properties)
         {
-            var defaultScheme = await _schemes.GetDefaultSignOutSchemeAsync();
-            var cookieScheme = await context.GetCookieAuthenticationSchemeAsync();
-
-            if ((scheme == null && defaultScheme?.Name == cookieScheme) || scheme == cookieScheme)
-            {
-                // this sets a flag used by middleware to do post-signout work.
-                context.SetSignOutCalled();
-            }
-
-            await _inner.SignOutAsync(context, scheme, properties);
-        }
-
-        public Task<AuthenticateResult> AuthenticateAsync(HttpContext context, string scheme)
-        {
-            return _inner.AuthenticateAsync(context, scheme);
-        }
-
-        public Task ChallengeAsync(HttpContext context, string scheme, AuthenticationProperties properties)
-        {
-            return _inner.ChallengeAsync(context, scheme, properties);
-        }
-
-        public Task ForbidAsync(HttpContext context, string scheme, AuthenticationProperties properties)
-        {
-            return _inner.ForbidAsync(context, scheme, properties);
+            return _httpContextAccessor.HttpContext.ForbidAsync(scheme, properties);
         }
 
         private void AssertRequiredClaims(ClaimsPrincipal principal)
@@ -122,29 +46,9 @@ namespace IdentityServer4.Hosting
             // our scenario. IOW, we take their old AuthenticationMethod value of "Google"
             // and issue it as the idp claim. we then also issue a amr with "external"
             var amr = identity.FindFirst(ClaimTypes.AuthenticationMethod);
-            if (amr != null &&
-                identity.FindFirst(JwtClaimTypes.IdentityProvider) == null &&
-                identity.FindFirst(JwtClaimTypes.AuthenticationMethod) == null)
+            if (amr != null)
             {
-                _logger.LogDebug("Removing amr claim with value: {value}", amr.Value);
-                identity.RemoveClaim(amr);
-
-                _logger.LogDebug("Adding idp claim with value: {value}", amr.Value);
-                identity.AddClaim(new Claim(JwtClaimTypes.IdentityProvider, amr.Value));
-
-                _logger.LogDebug("Adding amr claim with value: {value}", Constants.ExternalAuthenticationMethod);
-                identity.AddClaim(new Claim(JwtClaimTypes.AuthenticationMethod, Constants.ExternalAuthenticationMethod));
-            }
-
-            if (identity.FindFirst(JwtClaimTypes.IdentityProvider) == null)
-            {
-                _logger.LogDebug("Adding idp claim with value: {value}", IdentityServerConstants.LocalIdentityProvider);
-                identity.AddClaim(new Claim(JwtClaimTypes.IdentityProvider, IdentityServerConstants.LocalIdentityProvider));
-            }
-
-            if (identity.FindFirst(JwtClaimTypes.AuthenticationMethod) == null)
-            {
-                if (identity.FindFirst(JwtClaimTypes.IdentityProvider).Value == IdentityServerConstants.LocalIdentityProvider)
+                if (amr.Value == IdentityServerConstants.LocalIdentityProvider)
                 {
                     _logger.LogDebug("Adding amr claim with value: {value}", OidcConstants.AuthenticationMethods.Password);
                     identity.AddClaim(new Claim(JwtClaimTypes.AuthenticationMethod, OidcConstants.AuthenticationMethods.Password));
@@ -163,6 +67,21 @@ namespace IdentityServer4.Hosting
                 _logger.LogDebug("Adding auth_time claim with value: {value}", time);
                 identity.AddClaim(new Claim(JwtClaimTypes.AuthenticationTime, time, ClaimValueTypes.Integer64));
             }
+        }
+
+        public Task AuthenticateAsync(HttpContext context, string scheme)
+        {
+            return context.AuthenticateAsync(scheme);
+        }
+
+        public Task ChallengeAsync(HttpContext context, string scheme, AuthenticationProperties properties)
+        {
+            return context.ChallengeAsync(scheme, properties);
+        }
+
+        public Task ForbidAsync(HttpContext context, string scheme, AuthenticationProperties properties)
+        {
+            return context.ForbidAsync(scheme, properties);
         }
     }
 }

@@ -71,29 +71,6 @@ namespace IdentityServer4.Events
         }
 
         /// <summary>
-        /// Indicates if the type of event will be persisted.
-        /// </summary>
-        /// <param name="evtType"></param>
-        /// <returns></returns>
-        /// <exception cref="System.ArgumentOutOfRangeException"></exception>
-        public bool CanRaiseEventType(EventTypes evtType)
-        {
-            switch (evtType)
-            {
-                case EventTypes.Failure:
-                    return Options.Events.RaiseFailureEvents;
-                case EventTypes.Information:
-                    return Options.Events.RaiseInformationEvents;
-                case EventTypes.Success:
-                    return Options.Events.RaiseSuccessEvents;
-                case EventTypes.Error:
-                    return Options.Events.RaiseErrorEvents;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(evtType));
-            }
-        }
-
-        /// <summary>
         /// Determines whether this event would be persisted.
         /// </summary>
         /// <param name="evt">The evt.</param>
@@ -102,7 +79,19 @@ namespace IdentityServer4.Events
         /// </returns>
         protected virtual bool CanRaiseEvent(Event evt)
         {
-            return CanRaiseEventType(evt.EventType);
+            return CanRaiseEventType(evt.Type);
+        }
+
+        /// <summary>
+        /// Determines whether this event type would be persisted.
+        /// </summary>
+        /// <param name="evtType">The evt type.</param>
+        /// <returns>
+        ///   <c>true</c> if this event type would be persisted; otherwise, <c>false</c>.
+        /// </returns>
+        protected virtual bool CanRaiseEventType(EventType evtType)
+        {
+            return Options.Events.Enabled;
         }
 
         /// <summary>

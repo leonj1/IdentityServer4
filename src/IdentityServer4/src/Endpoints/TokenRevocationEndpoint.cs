@@ -1,7 +1,3 @@
-﻿// Copyright (c) Brock Allen & Dominick Baier. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See LICENSE in the project root for license information.
-
-
 using IdentityModel;
 using IdentityServer4.Endpoints.Results;
 using IdentityServer4.Hosting;
@@ -66,35 +62,15 @@ namespace IdentityServer4.Endpoints
                 return new StatusCodeResult(HttpStatusCode.MethodNotAllowed);
             }
 
-            if (!context.Request.HasApplicationFormContentType())
+            if (!context.Request.HasFormContentType)
             {
-                _logger.LogWarning("Invalid media type");
-                return new StatusCodeResult(HttpStatusCode.UnsupportedMediaType);
+                _logger.LogWarning("Request does not contain form data");
+                return new StatusCodeResult(HttpStatusCode.BadRequest);
             }
 
-            var response = await ProcessRevocationRequestAsync(context);
-
-            return response;
-        }
-
-        private async Task<IEndpointResult> ProcessRevocationRequestAsync(HttpContext context)
-        {
-            _logger.LogDebug("Start revocation request.");
-
-            // validate client
-            var clientValidationResult = await _clientValidator.ValidateAsync(context);
-
-            if (clientValidationResult.IsError)
-            {
-                return new TokenRevocationErrorResult(OidcConstants.TokenErrors.InvalidClient);
-            }
-
-            _logger.LogTrace("Client validation successful");
-
-            // validate the token request
             var form = (await context.Request.ReadFormAsync()).AsNameValueCollection();
 
-            _logger.LogTrace("Calling into token revocation request validator: {type}", _requestValidator.GetType().FullName);
+            // Validate the token request
             var requestValidationResult = await _requestValidator.ValidateRequestAsync(form, clientValidationResult.Client);
 
             if (requestValidationResult.IsError)

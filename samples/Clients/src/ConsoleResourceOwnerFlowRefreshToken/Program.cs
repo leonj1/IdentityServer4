@@ -1,4 +1,4 @@
-﻿using Clients;
+using Clients;
 using IdentityModel;
 using IdentityModel.Client;
 using Newtonsoft.Json.Linq;
@@ -83,16 +83,10 @@ namespace ConsoleResourceOwnerFlowRefreshToken
         {
             var baseAddress = Constants.SampleApi;
 
-            var client = new HttpClient
+            using (var client = new HttpClientWrapper(baseAddress))
             {
-                BaseAddress = new Uri(baseAddress)
-            };
-
-            client.SetBearerToken(token);
-            var response = await client.GetStringAsync("identity");
-
-            "\n\nService claims:".ConsoleGreen();
-            Console.WriteLine(JArray.Parse(response));
+                await client.CallServiceAsync(token);
+            }
         }
 
         private static void ShowResponse(TokenResponse response)
@@ -129,6 +123,38 @@ namespace ConsoleResourceOwnerFlowRefreshToken
                     Console.WriteLine(response.Json);
                 }
             }
+        }
+    }
+
+    public class HttpClientWrapper : IDisposable
+    {
+        private readonly HttpClient _httpClient;
+
+        public HttpClientWrapper(string baseAddress)
+        {
+            _httpClient = new HttpClient { BaseAddress = new Uri(baseAddress) };
+        }
+
+        public async Task CallServiceAsync(string token)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, "api/resource");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            using (var response = await _httpClient.SendAsync(request))
+            {
+                if (!response.IsSuccessStatusCode)
+                {
+                    throw new Exception($"HTTP error: {response.StatusCode}");
+                }
+
+                var content = await response.Content.ReadAsStringAsync();
+                Console.WriteLine(content);
+            }
+        }
+
+        public void Dispose()
+        {
+            _httpClient.Dispose();
         }
     }
 }

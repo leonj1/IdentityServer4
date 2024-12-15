@@ -1,7 +1,3 @@
-﻿// Copyright (c) Brock Allen & Dominick Baier. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See LICENSE in the project root for license information.
-
-
 using IdentityServer4.Events;
 using IdentityServer4.Services;
 using IdentityServer4.Stores;
@@ -74,16 +70,6 @@ namespace IdentityServer4.Validation
             }
 
             if (apis.Count() > 1)
-            {
-                await RaiseFailureEventAsync(parsedSecret.Id, "Invalid API resource");
-
-                _logger.LogError("More than one API resource with that name found. aborting");
-                return fail;
-            }
-
-            var api = apis.Single();
-
-            if (api.Enabled == false)
             {
                 await RaiseFailureEventAsync(parsedSecret.Id, "API resource not enabled");
 

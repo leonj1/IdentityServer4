@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using IdentityServer4.Models;
 using IdentityServer4.Test;
 using Newtonsoft.Json.Linq;
@@ -34,54 +34,37 @@ namespace IdentityServer.IntegrationTests.Endpoints.Token
                 AllowedScopes = new List<string> { "api" },
             });
 
-
             _mockPipeline.Users.Add(new TestUser
             {
-                SubjectId = "bob",
+                SubjectId = "1",
                 Username = "bob",
-                Password = "password",
-                Claims = new Claim[]
-                {
-                    new Claim("name", "Bob Loblaw"),
-                    new Claim("email", "bob@loblaw.com"),
-                    new Claim("role", "Attorney")
-                }
+                Password = "password"
             });
 
-            _mockPipeline.IdentityScopes.AddRange(new IdentityResource[] {
-                new IdentityResources.OpenId()
+            _mockPipeline.IdentityScopes.AddRange(new IdentityResource[]
+            {
+                new IdentityResources.OpenId(),
+                new IdentityResources.Profile()
             });
 
-            _mockPipeline.ApiResources.AddRange(new ApiResource[] {
-                new ApiResource
-                {
-                    Name = "api",
-                    ApiSecrets = new List<Secret> { new Secret(scope_secret.Sha256()) },
-                    Scopes = {scope_name}
-                }
-            });
+            _mockPipeline.ApiResources.Add(new ApiResource("api", "My API"));
 
-            _mockPipeline.ApiScopes.AddRange(new[] {
-                new ApiScope
-                {
-                    Name = scope_name
-                }
-            });
+            _mockPipeline.ApiScopes.Add(new ApiScope(scope_name, "My Scope"));
 
             _mockPipeline.Initialize();
         }
 
         [Fact]
-        [Trait("Category", Category)]
-        public async Task client_credentials_request_with_funny_headers_should_not_hang()
+        public async Task ClientCredentialsGrantType_ShouldReturnAccessToken()
         {
             var data = new Dictionary<string, string>
             {
                 { "grant_type", "client_credentials" },
-                { "client_id", client_id },
-                { "client_secret", client_secret },
                 { "scope", scope_name },
+                { "client_id", client_id },
+                { "client_secret", client_secret }
             };
+
             var form = new FormUrlEncodedContent(data);
             _mockPipeline.BackChannelClient.DefaultRequestHeaders.Add("Referer", "http://127.0.0.1:33086/appservice/appservice?t=1564165664142?load");
             var response = await _mockPipeline.BackChannelClient.PostAsync(IdentityServerPipeline.TokenEndpoint, form);
@@ -93,8 +76,7 @@ namespace IdentityServer.IntegrationTests.Endpoints.Token
         }
 
         [Fact]
-        [Trait("Category", Category)]
-        public async Task resource_owner_request_with_funny_headers_should_not_hang()
+        public async Task ResourceOwnerPasswordCredentialsGrantType_ShouldReturnAccessToken()
         {
             var data = new Dictionary<string, string>
             {
@@ -103,8 +85,9 @@ namespace IdentityServer.IntegrationTests.Endpoints.Token
                 { "password", "password" },
                 { "client_id", client_id },
                 { "client_secret", client_secret },
-                { "scope", scope_name },
+                { "scope", scope_name }
             };
+
             var form = new FormUrlEncodedContent(data);
             _mockPipeline.BackChannelClient.DefaultRequestHeaders.Add("Referer", "http://127.0.0.1:33086/appservice/appservice?t=1564165664142?load");
             var response = await _mockPipeline.BackChannelClient.PostAsync(IdentityServerPipeline.TokenEndpoint, form);

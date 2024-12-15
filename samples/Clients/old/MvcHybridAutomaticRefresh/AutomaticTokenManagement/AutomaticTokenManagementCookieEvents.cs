@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -71,21 +71,15 @@ namespace IdentityModel.AspNetCore
                         if (response.IsError)
                         {
                             _logger.LogWarning("Error refreshing token: {error}", response.Error);
-                            context.RejectPrincipal();
                             return;
                         }
 
-                        context.Properties.UpdateTokenValue("access_token", response.AccessToken);
-                        context.Properties.UpdateTokenValue("refresh_token", response.RefreshToken);
-
-                        var newExpiresAt = DateTime.UtcNow + TimeSpan.FromSeconds(response.ExpiresIn);
-                        context.Properties.UpdateTokenValue("expires_at", newExpiresAt.ToString("o", CultureInfo.InvariantCulture));
-
-                        await context.HttpContext.SignInAsync(context.Principal, context.Properties);
+                        // Update the principal with new tokens
+                        context.Principal = response.Principal;
                     }
-                    finally
+                    catch (Exception ex)
                     {
-                        _pendingRefreshTokenRequests.TryRemove(refreshToken.Value, out _);
+                        _logger.LogError(ex, "An error occurred while refreshing the token.");
                     }
                 }
             }

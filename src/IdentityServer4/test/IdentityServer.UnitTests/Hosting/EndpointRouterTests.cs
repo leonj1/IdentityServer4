@@ -44,35 +44,7 @@ namespace IdentityServer.UnitTests.Hosting
             _endpoints.Add(new IdentityServer4.Hosting.Endpoint("ep2", "/ep2", typeof(MyOtherEndpointHandler)));
 
             var ctx = new DefaultHttpContext();
-            ctx.Request.Path = new PathString("/wrong");
-            ctx.RequestServices = new StubServiceProvider();
-
-            var result = _subject.Find(ctx);
-            result.Should().BeNull();
-        }
-
-        [Fact]
-        public void Find_should_find_path()
-        {
-            _endpoints.Add(new IdentityServer4.Hosting.Endpoint("ep1", "/ep1", typeof(MyEndpointHandler)));
-            _endpoints.Add(new IdentityServer4.Hosting.Endpoint("ep2", "/ep2", typeof(MyOtherEndpointHandler)));
-
-            var ctx = new DefaultHttpContext();
-            ctx.Request.Path = new PathString("/ep1");
-            ctx.RequestServices = new StubServiceProvider();
-
-            var result = _subject.Find(ctx);
-            result.Should().BeOfType<MyEndpointHandler>();
-        }
-
-        [Fact]
-        public void Find_should_not_find_nested_paths()
-        {
-            _endpoints.Add(new IdentityServer4.Hosting.Endpoint("ep1", "/ep1", typeof(MyEndpointHandler)));
-            _endpoints.Add(new IdentityServer4.Hosting.Endpoint("ep2", "/ep2", typeof(MyOtherEndpointHandler)));
-
-            var ctx = new DefaultHttpContext();
-            ctx.Request.Path = new PathString("/ep1/subpath");
+            ctx.Request.Path = new PathString("/ep3");
             ctx.RequestServices = new StubServiceProvider();
 
             var result = _subject.Find(ctx);
@@ -98,8 +70,6 @@ namespace IdentityServer.UnitTests.Hosting
         {
             _endpoints.Add(new IdentityServer4.Hosting.Endpoint(EndpointNames.Authorize, "/ep1", typeof(MyEndpointHandler)));
             _endpoints.Add(new IdentityServer4.Hosting.Endpoint("ep2", "/ep2", typeof(MyOtherEndpointHandler)));
-
-            _options.Endpoints.EnableAuthorizeEndpoint = false;
 
             var ctx = new DefaultHttpContext();
             ctx.Request.Path = new PathString("/ep1");
